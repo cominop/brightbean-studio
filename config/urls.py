@@ -9,6 +9,8 @@ from apps.approvals.views import org_approval_queue
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", health_check, name="health_check"),
+    # REST API
+    path("api/v1/", include("apps.integrations.urls")),
     path("accounts/", include("apps.accounts.urls")),
     path("accounts/", include("allauth.urls")),
     path("organizations/", include("apps.organizations.urls")),

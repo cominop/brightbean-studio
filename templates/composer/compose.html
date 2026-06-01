@@ -1241,11 +1241,43 @@
                     <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                 </div>
             </div>
+
+            <!-- Unsplash Search Bar (bottom of media picker) -->
+            <div class="px-4 sm:px-6 py-3 border-t border-stone-100 flex-shrink-0">
+                <div class="flex gap-2 items-center">
+                    <div class="relative flex-1">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input type="text"
+                               id="composer-unsplash-search"
+                               placeholder="Search Unsplash for photos..."
+                               @keydown.enter="openUnsplashFromComposer($el.value)"
+                               class="w-full pl-9 pr-4 py-2 text-sm border rounded-lg outline-none transition-all duration-150 focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                               style="border-color: var(--border, #E7E5E4);">
+                    </div>
+                    <button @click="openUnsplashFromComposer(document.getElementById('composer-unsplash-search').value)"
+                            class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 hover:border-orange-300 transition-all duration-150 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        Search
+                    </button>
+                </div>
+                <p class="mt-1.5 text-[10px] text-stone-400">Photos provided by <a href="https://unsplash.com" target="_blank" rel="noopener" class="underline">Unsplash</a></p>
+            </div>
         </div>
     </div>
 
     <!-- ════════════════════════════════════════════════════════════
          YOUTUBE THUMBNAIL PICKER MODAL
+         ════════════════════════════════════════════════════════════ -->
+
+    <!-- ════════════════════════════════════════════════════════════
+         UNSPLASH MODAL
+         ════════════════════════════════════════════════════════════ -->
+    <template x-if="unsplashReady">
+        {% include "integrations/unsplash_modal.html" %}
+    </template>
+
+    <!-- ════════════════════════════════════════════════════════════
+         YOUTUBE THUMBNAIL PICKER MODAL (continued)
          ════════════════════════════════════════════════════════════ -->
     <div x-show="showThumbnailPicker" x-cloak
          class="fixed inset-0 z-[60] flex items-center justify-center"
@@ -1369,6 +1401,7 @@
 {{ char_limits|json_script:"composer-char-limits" }}
 {{ platform_extras|json_script:"composer-platform-extras" }}
 {{ media_items|json_script:"composer-media-items" }}
+<script src="{% static 'js/unsplash-modal.js' %}"></script>
 <script nonce="{{ request.csp_nonce }}">
 function composerApp() {
     return {
@@ -1391,6 +1424,11 @@ function composerApp() {
         previewTimer: null,
         autosavedPostId: '{{ post.id|default:"" }}',
         mediaItems: JSON.parse(document.getElementById('composer-media-items').textContent),
+
+        // Unsplash integration
+        unsplashReady: false,
+        unsplashModalData: null,
+        apiToken: '{{ drf_token|default:"" }}',
 
         // Computed-like getters for title field visibility
         get anyPlatformNeedsTitle() {
@@ -1792,7 +1830,39 @@ function composerApp() {
                 e.stopPropagation();
                 thumb.remove();
             });
-        }
+        },
+
+        // Unsplash integration
+        openUnsplashFromComposer(query) {
+            const q = (query || '').trim();
+            if (!this.unsplashModalData) {
+                this.unsplashReady = true;
+                this.$nextTick(() => {
+                    const el = this.$root.querySelector('[x-data="unsplashModal()"]');
+                    if (el && el._x_dataStack) {
+                        this.unsplashModalData = el._x_dataStack[0];
+                        this._openUnsplashModal(q);
+                    }
+                });
+            } else {
+                this._openUnsplashModal(q);
+            }
+        },
+
+        _openUnsplashModal(query) {
+            if (!this.unsplashModalData) return;
+            this.unsplashModalData.workspaceId = '{{ workspace.id }}';
+            this.unsplashModalData.apiToken = this.apiToken;
+            this.unsplashModalData.onImport = (data) => {
+                // Refresh the media picker content
+                const picker = this.$root.querySelector('[hx-get*="media_picker"]');
+                if (picker && window.htmx) {
+                    htmx.process(picker);
+                    htmx.trigger(picker, 'intersect once');
+                }
+            };
+            this.unsplashModalData.open({ query: query });
+        },
     };
 }
 

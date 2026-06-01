@@ -22,6 +22,9 @@ DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 APP_URL = env("APP_URL")
 
+# Third-party API keys
+UNSPLASH_ACCESS_KEY = env("UNSPLASH_ACCESS_KEY", default="")
+
 # Application definition
 
 DJANGO_APPS = [
@@ -43,6 +46,8 @@ THIRD_PARTY_APPS = [
     "django_htmx",
     "tailwind",
     "csp",
+    "rest_framework",
+    "rest_framework.authtoken",
     "apps.background_task_config.BackgroundTaskConfig",
 ]
 
@@ -64,6 +69,7 @@ LOCAL_APPS = [
     "apps.approvals",
     "apps.client_portal",
     "apps.onboarding",
+    "apps.integrations",
     # Always installed (migrations consistent across deployments). URLs +
     # templates short-circuit when ``settings.INTELLIGENCE_ENABLED`` is False,
     # so self-hosters who don't set the Intelligence env vars get no
@@ -398,6 +404,28 @@ YOUTUBE_WEBHOOK_SECRET = env("YOUTUBE_WEBHOOK_SECRET", default="")
 # Rate limiting
 RATELIMIT_ENABLE = not DEBUG
 RATELIMIT_USE_CACHE = "default"
+
+
+# ---------------------------------------------------------------------------
+# Django REST Framework (API layer)
+# ---------------------------------------------------------------------------
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 50,
+    "UNAUTHENTICATED_USER": None,
+}
 
 
 # ---------------------------------------------------------------------------

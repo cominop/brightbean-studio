@@ -124,6 +124,8 @@ def sidebar_context(request):
         "sidebar_pending_approvals": sidebar_pending_approvals,
         "sidebar_idea_columns": sidebar_idea_columns,
         "sidebar_idea_tags": sidebar_idea_tags,
+        # DRF auth token for API calls (e.g., Unsplash integration)
+        "drf_token": _get_drf_token(request.user),
     }
 
 
@@ -143,3 +145,14 @@ def _platform_display_names():
         ("twitter", "X (Twitter)"),
         ("google_business", "Google Business"),
     ]
+
+
+def _get_drf_token(user):
+    """Get or create a DRF auth token for the user for API calls."""
+    try:
+        from rest_framework.authtoken.models import Token
+
+        token, _created = Token.objects.get_or_create(user=user)
+        return token.key
+    except Exception:
+        return ""

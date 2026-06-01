@@ -134,17 +134,25 @@
 
       <!-- All Media -->
       <a href="{% url 'media_library:index' workspace_id=workspace.id %}"
-         class="ml-folder-item flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer {% if not current_folder %}active{% endif %}">
+         class="ml-folder-item flex items-center gap-2 pl-4 pr-3 py-2.5 rounded-lg text-sm cursor-pointer {% if not current_folder %}active{% endif %}">
         <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6a2 2 0 012-2h2l2 2h6a2 2 0 012 2v2M4 6v10a2 2 0 002 2h12a2 2 0 002-2V10a2 2 0 00-2-2H4z"/></svg>
         All Media
       </a>
 
       <!-- Starred -->
       <a href="{% url 'media_library:index' workspace_id=workspace.id %}?starred=1"
-         class="ml-folder-item flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer {% if is_starred %}active{% endif %}">
+         class="ml-folder-item flex items-center gap-2 pl-4 pr-3 py-2.5 rounded-lg text-sm cursor-pointer {% if is_starred %}active{% endif %}">
         <svg class="w-4 h-4 flex-shrink-0" fill="{% if is_starred %}currentColor{% else %}none{% endif %}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
         Starred
       </a>
+
+      <!-- Search Unsplash -->
+      <button @click="openUnsplash()"
+              class="ml-folder-item flex items-center gap-2 pl-4 pr-3 py-2.5 rounded-lg text-sm cursor-pointer w-full text-left hover:bg-stone-100 transition-colors"
+              style="color: var(--text-secondary, #57534E);">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="1.5"/><circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5"/><polyline points="21 15 16 10 5 21" stroke-width="1.5"/></svg>
+        Search Unsplash...
+      </button>
 
       <div class="my-3 border-t" style="border-color: var(--surface-2, #F5F5F4);"></div>
 
@@ -167,7 +175,7 @@
   <div class="flex-1 flex flex-col overflow-hidden">
 
     <!-- ── Toolbar ── -->
-    <div class="flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6 py-3 border-b rounded-tr-xl" style="border-color: var(--border, #E7E5E4); background: var(--surface-0, #FFF);">
+    <div class="flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6 pt-4 pb-3 border-b rounded-tr-xl" style="border-color: var(--border, #E7E5E4); background: var(--surface-0, #FFF);">
 
       <!-- Search -->
       <div class="relative flex-1 min-w-[160px] sm:max-w-sm">
@@ -316,11 +324,18 @@
       <!-- Content loaded via HTMX -->
     </div>
   </div>
+
+  <!-- ═══════ UNSPLASH MODAL ═══════ -->
+  {# DRF auth token for API calls — injected from view context or defaulted #}
+  <template x-if="unsplashReady">
+    {% include "integrations/unsplash_modal.html" %}
+  </template>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/media-library.js' %}"></script>
+<script src="{% static 'js/unsplash-modal.js' %}"></script>
 <script nonce="{{ request.csp_nonce }}">
 function mediaLibrary() {
   return {
@@ -331,6 +346,10 @@ function mediaLibrary() {
     detailOpen: false,
     showNewFolder: false,
     currentFolder: '{{ current_folder|default:"" }}',
+    // Unsplash integration
+    unsplashReady: false,
+    unsplashModalData: null,
+    apiToken: '{{ drf_token|default:"" }}',
 
     handleFiles(files) {
       if (!files || files.length === 0) return;
@@ -426,7 +445,36 @@ function mediaLibrary() {
 
     closeDetail() {
       this.detailOpen = false;
-    }
+    },
+
+    // Unsplash integration
+    openUnsplash() {
+      if (!this.unsplashModalData) {
+        this.unsplashReady = true;
+        this.$nextTick(() => {
+          const el = this.$root.querySelector('[x-data="unsplashModal()"]');
+          if (el && el._x_dataStack) {
+            this.unsplashModalData = el._x_dataStack[0];
+            this._setupUnsplashModal();
+            this.unsplashModalData.open();
+          }
+        });
+      } else {
+        this._setupUnsplashModal();
+        this.unsplashModalData.open();
+      }
+    },
+
+    _setupUnsplashModal() {
+      this.unsplashModalData.workspaceId = '{{ workspace.id }}';
+      this.unsplashModalData.apiToken = this.apiToken;
+      this.unsplashModalData.onImport = (data) => {
+        const grid = document.getElementById('asset-grid');
+        if (grid && window.htmx) {
+          htmx.trigger(grid, 'uploadsComplete');
+        }
+      };
+    },
   }
 }
 </script>

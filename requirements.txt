@@ -11,6 +11,9 @@ bcrypt>=4.2,<5.0
 # Background tasks
 django-background-tasks>=1.2,<2.0
 
+# REST API
+djangorestframework>=3.15,<4.0
+
 # Frontend
 django-tailwind[reload]>=3.8,<4.0
 django-htmx>=1.19,<2.0

@@ -68,6 +68,18 @@ def workspace_settings(request, workspace_id):
     if request.method == "POST":
         action = request.POST.get("action")
 
+        if action == "update_integration_settings" and is_owner_or_manager:
+            unsplash_key = request.POST.get("unsplash_access_key", "").strip()
+            settings = workspace.integration_settings or {}
+            settings["unsplash_access_key"] = unsplash_key
+            workspace.integration_settings = settings
+            workspace.save(update_fields=["integration_settings"])
+            if unsplash_key:
+                messages.success(request, "Unsplash access key saved.")
+            else:
+                messages.success(request, "Unsplash access key removed.")
+            return redirect("workspaces:settings", workspace_id=workspace.id)
+
         if action == "archive_workspace" and is_owner_or_manager:
             with transaction.atomic():
                 active_count = (

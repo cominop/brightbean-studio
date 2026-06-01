@@ -2,7 +2,14 @@
   "name": "brightbean-studio",
   "private": true,
   "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "heroku-postbuild": "cd theme/static_src && npm ci && npm run build"
   },
-  "cacheDirectories": ["theme/static_src/node_modules"]
+  "cacheDirectories": [
+    "theme/static_src/node_modules"
+  ],
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
 }

@@ -72,6 +72,43 @@
     {% if is_owner_or_manager %}
     <hr class="my-10" style="border-color: var(--border);">
 
+    <!-- Integrations section -->
+    <div>
+        <h2 class="text-xl font-semibold mb-4" style="color: var(--text-primary);">Integrations</h2>
+
+        <!-- Unsplash -->
+        <form method="POST" class="mb-10">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_integration_settings">
+            <div class="flex items-end gap-4">
+                <div class="flex-1">
+                    <label for="unsplash_key" class="block text-sm font-semibold mb-2" style="color: var(--text-primary);">
+                        Unsplash Access Key
+                    </label>
+                    <input type="password"
+                           id="unsplash_key"
+                           name="unsplash_access_key"
+                           value="{{ workspace.integration_settings.unsplash_access_key|default:'' }}"
+                           placeholder="Paste your Access Key from the Unsplash developer dashboard"
+                           class="input-focus w-full px-3 py-2 text-sm rounded-lg outline-none transition-colors font-mono"
+                           style="border: 1px solid var(--border); color: var(--text-primary); background: var(--surface-0);">
+                    <p class="text-xs mt-1.5" style="color: var(--text-tertiary);">
+                        Only the <strong>Access Key</strong> is required — not the Secret Key or Application ID.
+                        Get your keys at <a href="https://unsplash.com/developers" target="_blank" rel="noopener" class="underline hover:text-orange-600">unsplash.com/developers</a>.
+                        Free tier: 50 requests/hour.
+                    </p>
+                </div>
+                <button type="submit"
+                        class="btn-neutral px-5 py-2 text-sm font-medium rounded-full cursor-pointer whitespace-nowrap"
+                        style="background: var(--neutral-100); color: var(--text-primary);">
+                    Save Key
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <hr class="my-10" style="border-color: var(--border);">
+
     <!-- Archive / Restore Workspace section -->
     <div x-data="{ showArchiveModal: false }">
         <div class="flex items-start justify-between gap-4 mb-10">

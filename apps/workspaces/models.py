@@ -33,6 +33,8 @@ class Workspace(models.Model):
         default=ApprovalWorkflowMode.NONE,
     )
     is_archived = models.BooleanField(default=False)
+    integration_settings = models.JSONField(default=dict, blank=True,
+        help_text="Per-workspace integration keys (e.g., unsplash_access_key).")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

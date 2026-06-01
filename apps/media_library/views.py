@@ -25,12 +25,20 @@ from .services import (
 from .tasks import process_image_edit, process_media_asset, process_video_trim
 from .validators import get_accepted_file_types
 
+from rest_framework.authtoken.models import Token
+
 
 def _get_workspace_or_404(request, workspace_id):
     """Get workspace and verify the user has access via the RBAC middleware."""
     if not request.workspace or str(request.workspace.id) != str(workspace_id):
         raise Http404
     return request.workspace
+
+
+def _get_drf_token(user):
+    """Get or create a DRF auth token for the user."""
+    token, _ = Token.objects.get_or_create(user=user)
+    return token.key
 
 
 # ──────────────────────────────────────────────────────────────
@@ -120,6 +128,7 @@ def library_index(request, workspace_id):
         "accepted_file_types": get_accepted_file_types(),
         "max_bulk_upload": getattr(settings, "MEDIA_LIBRARY_MAX_BULK_UPLOAD", 50),
         "settings_active": "media",
+        "drf_token": _get_drf_token(request.user),
     }
     return render(request, "media_library/library_index.html", context)
 
