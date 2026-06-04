@@ -22,6 +22,9 @@ DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 APP_URL = env("APP_URL")
 
+# Unsplash integration (plugin: brightbean-unsplash)
+UNSPLASH_ACCESS_KEY = env("UNSPLASH_ACCESS_KEY", default="")
+
 # Application definition
 
 DJANGO_APPS = [
@@ -43,6 +46,8 @@ THIRD_PARTY_APPS = [
     "django_htmx",
     "tailwind",
     "csp",
+    "rest_framework",
+    "rest_framework.authtoken",
     "apps.background_task_config.BackgroundTaskConfig",
 ]
 
@@ -73,9 +78,22 @@ LOCAL_APPS = [
     "apps.api",
     "apps.mcp",
     "theme",
+    # Unsplash integration
+    "apps.unsplash",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
+# DRF configuration — required by Unsplash plugin for TokenAuthentication
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -111,6 +129,7 @@ TEMPLATES = [
                 "apps.common.context_processors.sidebar_context",
                 "apps.onboarding.context_processors.onboarding_checklist",
                 "apps.intelligence.context_processors.intelligence_flag",
+                "apps.unsplash.context_processors.unsplash_modal",
             ],
         },
     },
