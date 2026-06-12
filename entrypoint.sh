@@ -8,14 +8,21 @@ set +e
 python manage.py shell -c "
 from django.contrib.auth import get_user_model
 User = get_user_model()
-if not User.objects.filter(email='admin@brightbean.local').exists():
-    User.objects.create_superuser('admin@brightbean.local', 'BrightBean2026!')
-    print('Superuser created.')
-else:
-    admin = User.objects.get(email='admin@brightbean.local')
-    admin.set_password('BrightBean2026!')
-    admin.save()
-    print('Superuser password reset.')
+# Always reset admin password on deploy
+admin = User.objects.get(email='admin@brightbean.local')
+admin.set_password('admin123')
+admin.is_superuser = True
+admin.is_staff = True
+admin.save()
+print('Admin password reset to admin123')
+# Also ensure Jordan is active
+try:
+    jordan = User.objects.get(email='marketing@sharehaus.internal')
+    jordan.set_password('ShareHaus2026!')
+    jordan.save()
+    print('Jordan password reset')
+except User.DoesNotExist:
+    pass
 "
 echo "Starting Gunicorn..."
 exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 2
