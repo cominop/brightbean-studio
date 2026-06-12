@@ -43,6 +43,8 @@ THIRD_PARTY_APPS = [
     "django_htmx",
     "tailwind",
     "csp",
+    "rest_framework",
+    "rest_framework.authtoken",
     "apps.background_task_config.BackgroundTaskConfig",
 ]
 
@@ -72,6 +74,7 @@ LOCAL_APPS = [
     "apps.api_keys",
     "apps.api",
     "apps.mcp",
+    "apps.unsplash",
     "theme",
 ]
 
@@ -111,6 +114,7 @@ TEMPLATES = [
                 "apps.common.context_processors.sidebar_context",
                 "apps.onboarding.context_processors.onboarding_checklist",
                 "apps.intelligence.context_processors.intelligence_flag",
+                "apps.unsplash.context_processors.unsplash_modal",
             ],
         },
     },
@@ -493,3 +497,16 @@ if INTELLIGENCE_ENABLED:
                 f"localhost / 127.0.0.1 dev tunnels) — current value would "
                 f"leak Intelligence API keys in transit."
             )
+
+# DRF config — required by Unsplash plugin (TokenAuthentication)
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+}

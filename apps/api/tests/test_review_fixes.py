@@ -175,9 +175,9 @@ class TestApiKeyCacheInvalidation:
 
         r = client_with_token.get("/api/v1/me/")
         ids = {a["id"] for a in r.json()["allowlisted_accounts"]}
-        assert str(second_account.id) in ids, (
-            "post-edit request still saw the pre-edit allowlist — the m2m_changed signal didn't bust the cache"
-        )
+        assert (
+            str(second_account.id) in ids
+        ), "post-edit request still saw the pre-edit allowlist — the m2m_changed signal didn't bust the cache"
 
         # Now remove the original account — same invariant.
         issued_key.api_key.social_accounts.remove(social_account)

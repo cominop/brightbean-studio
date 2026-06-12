@@ -157,6 +157,9 @@ class MediaAsset(models.Model):
         help_text="Dict of platform-specific processed versions: {'instagram': {'file': 'path', 'width': 1080}}",
     )
 
+    # External ID for stock media (Unsplash photo ID, Pexels ID, etc.)
+    external_id = models.CharField(max_length=255, blank=True, default="")
+
     # Version tracking
     current_version = models.ForeignKey(
         "MediaAssetVersion",

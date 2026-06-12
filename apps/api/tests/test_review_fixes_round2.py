@@ -347,9 +347,9 @@ class TestPlatformLimitKeysMatchChoices:
 
         real_choices = set(PlatformCredential.Platform.values)
         for key in PLATFORM_DAILY_POST_LIMIT:
-            assert key in real_choices, (
-                f"{key!r} is not in PlatformCredential.Platform.values — either rename it or add the choice"
-            )
+            assert (
+                key in real_choices
+            ), f"{key!r} is not in PlatformCredential.Platform.values — either rename it or add the choice"
 
 
 # ===========================================================================
@@ -699,9 +699,9 @@ class TestReverseM2mInvalidation:
         # account in one shot.
         social_account.api_keys.clear()
 
-        assert cache.get(cache_key) is None, (
-            "reverse SocialAccount.api_keys.clear() didn't bust the row cache; pre_clear snapshot wasn't used"
-        )
+        assert (
+            cache.get(cache_key) is None
+        ), "reverse SocialAccount.api_keys.clear() didn't bust the row cache; pre_clear snapshot wasn't used"
 
 
 # ===========================================================================
