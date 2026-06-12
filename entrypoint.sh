@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+export DJANGO_SETTINGS_MODULE=config.settings.production
 echo "Running migrations..."
 python manage.py migrate --noinput
 echo "Setting up superuser..."
