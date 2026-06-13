@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.static import serve
@@ -53,18 +52,6 @@ urlpatterns = [
 
 # ---------------------------------------------------------------------------
 # Intelligence integration — mounted only when env vars are set.
-# Two prefixes, DIFFERENT namespaces:
-#   /orgs/<uuid:org_id>/intelligence/*  — org-scoped surfaces under
-#                                          namespace ``intelligence`` (playground,
-#                                          subscribe, checkout, tools, …)
-#   /intelligence/*                     — non-org-scoped under namespace
-#                                          ``intelligence_global`` (Stripe success
-#                                          URL + user-scoped finalizing)
-#
-# Both used to share the namespace ``intelligence`` which caused only the
-# first include's names to be reachable via ``reverse()`` — activate,
-# finalizing, finalizing-status (in the second include) were orphaned and
-# any redirect/url-tag to them blew up with NoReverseMatch.
 # ---------------------------------------------------------------------------
 if settings.INTELLIGENCE_ENABLED:
     from apps.intelligence import urls as intelligence_urls
@@ -80,31 +67,5 @@ if settings.INTELLIGENCE_ENABLED:
         ),
     ]
 
-from django.http import JsonResponse
-
-
-def debug_media_root(request):
-    import os
-    media = settings.MEDIA_ROOT
-    files = []
-    for root, dirs, filenames in os.walk(media):
-        for f in filenames:
-            files.append(os.path.relpath(os.path.join(root, f), media))
-        if len(files) > 100:
-            break
-    # Test if a known file is readable
-    test_path = os.path.join(media, "media_library/2026/05/ALHaaEai-d0.jpg")
-    test_exists = os.path.isfile(test_path)
-    return JsonResponse({
-        "MEDIA_ROOT": media,
-        "exists": os.path.isdir(media),
-        "file_count": len(files),
-        "files": files[:50],
-        "test_path": test_path,
-        "test_exists": test_exists,
-    })
-
-urlpatterns += [path("debug-media/", debug_media_root)]
-
-# Serve media files using direct re_path (bypass static() helper)
+# Serve media files in production (DEBUG=False)
 urlpatterns += [re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT})]
