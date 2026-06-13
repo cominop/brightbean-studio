@@ -79,5 +79,21 @@ if settings.INTELLIGENCE_ENABLED:
         ),
     ]
 
+from django.http import JsonResponse
+
+
+def debug_media_root(request):
+    import os
+    media = settings.MEDIA_ROOT
+    files = []
+    for root, dirs, filenames in os.walk(media):
+        for f in filenames:
+            files.append(os.path.relpath(os.path.join(root, f), media))
+        if len(files) > 100:
+            break
+    return JsonResponse({"MEDIA_ROOT": media, "exists": os.path.isdir(media), "file_count": len(files), "files": files[:50]})
+
+urlpatterns += [path("debug-media/", debug_media_root)]
+
 # Serve media files in both dev and production
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
