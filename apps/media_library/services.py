@@ -75,6 +75,9 @@ def create_asset(
     Enforces the org-level storage quota before persisting; raises
     ``StorageQuotaExceededError`` (mapped to HTTP 413 by the API layer) when
     the upload would push usage over the cap.
+
+    Deduplicates by content hash — uploading the same file twice returns
+    the existing asset instead of creating a duplicate.
     """
     from .quotas import enforce_storage_quota
     from .validators import sniff_mime  # local import to avoid validator import cycle on the test path
@@ -86,6 +89,26 @@ def create_asset(
     enforce_storage_quota(organization, getattr(uploaded_file, "size", 0) or 0)
 
     sniffed_mime = sniff_mime(uploaded_file) or ""
+
+    # Content-based dedup: hash the file and check for existing match
+    import hashlib
+    uploaded_file.seek(0)
+    content_hash = hashlib.sha256(uploaded_file.read()).hexdigest()
+    uploaded_file.seek(0)
+
+    existing = (
+        MediaAsset.objects
+        .filter(workspace=workspace, file_size=uploaded_file.size)
+        .only("id", "file")
+    )
+    for candidate in existing:
+        try:
+            candidate.file.seek(0)
+            candidate_hash = hashlib.sha256(candidate.file.read()).hexdigest()
+            if candidate_hash == content_hash:
+                return candidate
+        except (OSError, ValueError):
+            continue
 
     asset = MediaAsset(
         organization=organization,

@@ -1217,28 +1217,17 @@ def upload_media(request, workspace_id, post_id=None):
         return JsonResponse({"error": "No file provided"}, status=400)
 
     from apps.media_library.models import MediaAsset
+    from apps.media_library.services import create_asset
 
-    # Determine media type
-    content_type = uploaded_file.content_type or ""
-    if content_type.startswith("image/"):
-        media_type = MediaAsset.MediaType.IMAGE
-    elif content_type.startswith("video/"):
-        media_type = MediaAsset.MediaType.VIDEO
-    elif content_type == "image/gif":
-        media_type = MediaAsset.MediaType.GIF
-    else:
-        media_type = MediaAsset.MediaType.DOCUMENT
-
-    asset = MediaAsset.objects.create(
-        workspace=workspace,
-        uploaded_by=request.user,
-        file=uploaded_file,
-        filename=uploaded_file.name,
-        media_type=media_type,
-        mime_type=content_type,
-        file_size=uploaded_file.size,
-        source="upload",
-    )
+    try:
+        asset = create_asset(
+            organization=workspace.organization,
+            workspace=workspace,
+            uploaded_file=uploaded_file,
+            uploaded_by=request.user,
+        )
+    except Exception:
+        return JsonResponse({"error": "Upload failed"}, status=500)
 
     # If a post ID is provided, attach immediately
     if post_id:
