@@ -1,7 +1,8 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.static import serve
 
 from apps.accounts.views import health_check
 from apps.api.api import api as agent_api
@@ -91,9 +92,19 @@ def debug_media_root(request):
             files.append(os.path.relpath(os.path.join(root, f), media))
         if len(files) > 100:
             break
-    return JsonResponse({"MEDIA_ROOT": media, "exists": os.path.isdir(media), "file_count": len(files), "files": files[:50]})
+    # Test if a known file is readable
+    test_path = os.path.join(media, "media_library/2026/05/ALHaaEai-d0.jpg")
+    test_exists = os.path.isfile(test_path)
+    return JsonResponse({
+        "MEDIA_ROOT": media,
+        "exists": os.path.isdir(media),
+        "file_count": len(files),
+        "files": files[:50],
+        "test_path": test_path,
+        "test_exists": test_exists,
+    })
 
 urlpatterns += [path("debug-media/", debug_media_root)]
 
-# Serve media files in both dev and production
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve media files using direct re_path (bypass static() helper)
+urlpatterns += [re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT})]
