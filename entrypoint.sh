@@ -2,19 +2,18 @@
 set -e
 export DJANGO_SETTINGS_MODULE=config.settings.production
 
-# Ensure media files are on the persistent volume
+# Ensure media files are on the persistent volume (force re-seed)
 export MEDIA_ROOT=/data/media
-if [ ! -f /data/media/.initialized ]; then
-    echo "First run: seeding media volume..."
-    mkdir -p /data/media
-    if [ -d /app/media ] && ls /app/media/* >/dev/null 2>&1; then
-        cp -r /app/media/* /data/media/
-        echo "Media files copied from /app/media."
-    else
-        echo "No media in image — volume starts empty."
-    fi
-    touch /data/media/.initialized
+echo "Re-seeding media volume..."
+mkdir -p /data/media
+if [ -d /app/media ] && ls /app/media/* >/dev/null 2>&1; then
+    rm -f /data/media/.initialized
+    cp -r /app/media/* /data/media/
+    echo "Media files copied from /app/media."
+else
+    echo "No media in image — volume starts empty."
 fi
+touch /data/media/.initialized
 
 echo "Running migrations..."
 python manage.py migrate --noinput
