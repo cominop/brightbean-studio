@@ -293,38 +293,6 @@ def _resolve_queues_for_post(queue_id, workspace, post_data):
     return unique
 
 
-def _reassign_queue_slots_from_floor(queues, post, floor_date, workspace):
-    """Re-slot *post* into each queue's first open slot on/after *floor_date*.
-
-    Used when the composer was opened from a specific calendar day — each
-    platform picks its earliest *free* slot (a gap, not a raw next slot, so it
-    never double-books) starting that day. Keeps the QueueEntry mirror in sync
-    with the PlatformPost the publisher fires on.
-    """
-    import zoneinfo
-
-    from apps.calendar.models import QueueEntry
-    from apps.calendar.services import _next_available_slot
-    from apps.composer.services import sync_post_scheduled_at
-
-    tz = zoneinfo.ZoneInfo(workspace.effective_timezone or "UTC")
-    floor_dt = datetime.combine(floor_date, datetime.min.time()).replace(tzinfo=tz)
-    floor_dt = max(floor_dt, timezone.now())
-
-    for q in queues:
-        pp = post.platform_posts.filter(social_account=q.social_account).first()
-        if pp is None:
-            continue
-        slot = _next_available_slot(q.social_account, exclude_pp_ids=[pp.id], after=floor_dt)
-        if slot is None:
-            continue
-        pp.scheduled_at = slot
-        pp.save(update_fields=["scheduled_at", "updated_at"])
-        QueueEntry.objects.filter(post=post, queue=q).update(assigned_slot_datetime=slot)
-
-    sync_post_scheduled_at(post)
-
-
 def _resolve_template_data(template_id, workspace):
     """Resolve a ?template= value into a template_data dict.
 
@@ -789,9 +757,11 @@ def save_post(request, workspace_id, post_id=None):
         # Ensure PlatformPost rows exist for every selected account before the
         # queue service writes per-platform scheduled_at values.
         _sync_platform_posts(request, post, workspace, initial_status="draft")
-        # If opened from a specific calendar day (month/week/day "+" CTA), that
-        # day is each queue's slot floor.
-        floor_date = form.cleaned_data.get("scheduled_date")
+        # "Next Available" always places the post in the queue's soonest open
+        # slot. It deliberately ignores the Schedule-panel date/time: those
+        # inputs are prefilled from the post's own scheduled_at/proposed time
+        # when editing, and treating them as a floor would push the post past
+        # the true next slot.
         try:
             # One transaction across every queue: if a later queue is full, the
             # earlier queues' slot writes roll back instead of leaving a child
@@ -799,8 +769,6 @@ def save_post(request, workspace_id, post_id=None):
             with transaction.atomic():
                 for q in queues:
                     add_to_queue(post, q)
-                if floor_date:
-                    _reassign_queue_slots_from_floor(queues, post, floor_date, workspace)
                 # Transition every child whose scheduled_at was filled in.
                 _transition_post_children(post, "scheduled", only=_scoped_platform_post_ids(request, post))
         except QueueFullError:

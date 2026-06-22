@@ -6,7 +6,7 @@ a post that is already scheduled must never have the panel reinterpreted as a
 proposal.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from django.test import TestCase
@@ -298,3 +298,103 @@ class ProposedPublishAtSaveTests(TestCase):
         pp = PlatformPost.objects.create(post=post, social_account=self.sa, status="scheduled", scheduled_at=None)
         due_ids = {d.id for d in PublishEngine()._get_due_platform_posts()}
         self.assertIn(pp.id, due_ids)
+
+    # --- Queue actions must ignore the prefilled Schedule-panel date ----------
+    # Editing a draft prefills scheduled_date/time from its proposed/scheduled
+    # time. The queue actions must NOT treat that date as a slot floor (which
+    # bumped posts to next week); "Next Available" and "Prioritise" both use the
+    # soonest open slot.
+
+    def _setup_daily_slots_and_queue(self):
+        """Give the account a 09:00 slot every day + a queue, so the soonest
+        open slot is always within ~1 day — well before any far-future floor."""
+        from apps.calendar.models import PostingSlot, Queue
+
+        for day in range(7):
+            PostingSlot.objects.create(social_account=self.sa, day_of_week=day, time=time(9, 0))
+        return Queue.objects.create(workspace=self.ws, name="Q", social_account=self.sa)
+
+    def test_add_to_queue_ignores_prefilled_schedule_date_as_floor(self):
+        self._setup_daily_slots_and_queue()
+        floor = timezone.now() + timedelta(days=14)
+        local = floor.astimezone(BERLIN)
+        post = create_post(
+            workspace=self.ws,
+            social_account=self.sa,
+            caption="body",
+            status="draft",
+            proposed_publish_at=floor,
+            author=self.user,
+        )
+        resp = self.client.post(
+            self._edit_save_url(post.id),
+            data={
+                "action": "add_to_queue",
+                "caption": "body",
+                "tags": "",
+                "selected_accounts": str(self.sa.id),
+                # The real prefilled form submits these (from the proposed time).
+                "scheduled_date": local.strftime("%Y-%m-%d"),
+                "scheduled_time": local.strftime("%H:%M"),
+            },
+        )
+        self.assertIn(resp.status_code, (200, 204, 302))
+        pp = post.platform_posts.get(social_account=self.sa)
+        pp.refresh_from_db()
+        self.assertIsNotNone(pp.scheduled_at)
+        # Soonest 09:00 slot is within ~1 day — NOT floored to +14d.
+        self.assertLess(pp.scheduled_at, timezone.now() + timedelta(days=3))
+
+    def test_add_to_queue_priority_ignores_prefilled_schedule_date_as_floor(self):
+        self._setup_daily_slots_and_queue()
+        floor = timezone.now() + timedelta(days=14)
+        local = floor.astimezone(BERLIN)
+        post = create_post(
+            workspace=self.ws,
+            social_account=self.sa,
+            caption="body",
+            status="draft",
+            proposed_publish_at=floor,
+            author=self.user,
+        )
+        resp = self.client.post(
+            self._edit_save_url(post.id),
+            data={
+                "action": "add_to_queue_priority",
+                "caption": "body",
+                "tags": "",
+                "selected_accounts": str(self.sa.id),
+                "scheduled_date": local.strftime("%Y-%m-%d"),
+                "scheduled_time": local.strftime("%H:%M"),
+            },
+        )
+        self.assertIn(resp.status_code, (200, 204, 302))
+        pp = post.platform_posts.get(social_account=self.sa)
+        pp.refresh_from_db()
+        self.assertIsNotNone(pp.scheduled_at)
+        # Prioritise lands on the earliest slot, ignoring the prefilled date.
+        self.assertLess(pp.scheduled_at, timezone.now() + timedelta(days=3))
+
+    def test_add_to_queue_new_post_uses_global_next_slot(self):
+        # The calendar "+" CTA opens a NEW post with scheduled_date prefilled to
+        # the clicked day. After dropping the floor, queueing uses the global
+        # next slot and no longer biases toward that day.
+        self._setup_daily_slots_and_queue()
+        clicked_day = timezone.now() + timedelta(days=10)
+        local = clicked_day.astimezone(BERLIN)
+        resp = self.client.post(
+            self.save_url,
+            data={
+                "action": "add_to_queue",
+                "caption": "body",
+                "tags": "",
+                "selected_accounts": str(self.sa.id),
+                "scheduled_date": local.strftime("%Y-%m-%d"),
+                "scheduled_time": local.strftime("%H:%M"),
+            },
+        )
+        self.assertIn(resp.status_code, (200, 204, 302))
+        post = self._latest()
+        pp = post.platform_posts.get(social_account=self.sa)
+        self.assertIsNotNone(pp.scheduled_at)
+        self.assertLess(pp.scheduled_at, timezone.now() + timedelta(days=3))
