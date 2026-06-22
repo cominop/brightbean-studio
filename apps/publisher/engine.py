@@ -300,6 +300,7 @@ class PublishEngine:
             attachments = [pm for pm in attachments if pm.media_asset.media_type == "video"]
 
         first_media_type = None
+        primary_video_duration = None
         app_url = getattr(settings, "APP_URL", "").rstrip("/")
         try:
             for pm in attachments:
@@ -309,6 +310,11 @@ class PublishEngine:
                 # Track the first media type for post type detection
                 if first_media_type is None:
                     first_media_type = asset.media_type
+
+                # Capture the first video's duration so providers can enforce
+                # platform max-duration limits (e.g. TikTok max_video_post_duration_sec).
+                if primary_video_duration is None and asset.media_type == "video":
+                    primary_video_duration = asset.duration or None
 
                 # Collect the public/presigned URL for this asset
                 url = asset.file.url
@@ -404,6 +410,7 @@ class PublishEngine:
                 post_type=post_type,
                 extra=extra,
                 link_url=link_url,
+                video_duration_sec=primary_video_duration,
             )
 
             logger.info(

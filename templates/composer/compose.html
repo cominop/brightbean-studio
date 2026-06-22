@@ -745,9 +745,10 @@
                              tt: null,
                              ttLoading: false,
                              ttLoaded: false,
-                             ttPrivacy: platformExtras[accId]?.privacy_level || 'PUBLIC_TO_EVERYONE',
-                             ttAllowComment: !platformExtras[accId]?.disable_comment,
-                             ttAllowReuse: !(platformExtras[accId]?.disable_duet || platformExtras[accId]?.disable_stitch),
+                             ttPrivacy: platformExtras[accId]?.privacy_level || '',
+                             ttAllowComment: platformExtras[accId]?.disable_comment === false,
+                             ttAllowDuet: platformExtras[accId]?.disable_duet === false,
+                             ttAllowStitch: platformExtras[accId]?.disable_stitch === false,
                              ttDisclose: !!(platformExtras[accId]?.brand_organic_toggle || platformExtras[accId]?.brand_content_toggle),
                              ttBrandOrganic: !!platformExtras[accId]?.brand_organic_toggle,
                              ttBrandContent: !!platformExtras[accId]?.brand_content_toggle,
@@ -768,6 +769,11 @@
                                      SELF_ONLY: 'Only you',
                                  })[level] || level;
                              },
+                             get ttLabelPrompt() {
+                                 if (this.ttBrandContent) return `Your photo/video will be labeled as 'Paid partnership'`;
+                                 if (this.ttBrandOrganic) return `Your photo/video will be labeled as 'Promotional content'`;
+                                 return '';
+                             },
                          }"
                          x-effect="if (charLimits[accId]?.platform === 'tiktok' && !ttLoaded && !ttLoading) {
                              ttLoading = true;
@@ -777,9 +783,10 @@
                                      if (data) {
                                          tt = data;
                                          if (data.comment_disabled) ttAllowComment = false;
-                                         if (data.duet_disabled && data.stitch_disabled) ttAllowReuse = false;
+                                         if (data.duet_disabled) ttAllowDuet = false;
+                                         if (data.stitch_disabled) ttAllowStitch = false;
                                          const opts = data.privacy_level_options || [];
-                                         if (opts.length && !opts.includes(ttPrivacy)) ttPrivacy = opts[0] || '';
+                                         if (ttPrivacy && opts.length && !opts.includes(ttPrivacy)) ttPrivacy = '';
                                      }
                                      ttLoaded = true;
                                  })
@@ -807,6 +814,7 @@
                                 <template x-for="lvl in ttOptions" :key="lvl">
                                     <option :value="lvl"
                                             :disabled="ttBrandContent && lvl === 'SELF_ONLY'"
+                                            :title="(ttBrandContent && lvl === 'SELF_ONLY') ? 'Branded content visibility cannot be set to private.' : ''"
                                             :selected="ttPrivacy === lvl"
                                             x-text="ttLabel(lvl)"></option>
                                 </template>
@@ -815,7 +823,7 @@
                             <p x-show="ttSelfOnlyLocked" class="text-[11px] text-amber-600 mt-1">
                                 This TikTok app hasn't passed TikTok's content audit yet — only private posting ("Only you") is available until the audit is approved.
                             </p>
-                            <p x-show="ttBrandContent" class="text-[11px] text-stone-400 mt-1">Branded content can't be set to "Only you".</p>
+                            <p x-show="ttBrandContent" class="text-[11px] text-stone-400 mt-1">Branded content visibility cannot be set to private.</p>
                         </div>
                         <!-- Cover: TikTok takes a frame timestamp, not an uploaded image -->
                         <div>
@@ -849,7 +857,9 @@
                                 </template>
                             </div>
                         </div>
-                        <!-- Interaction abilities -->
+                        <!-- Interaction abilities — separate per-interaction toggles.
+                             TikTok requires an independent checkbox per interaction,
+                             greyed out individually when disabled in creator settings. -->
                         <div>
                             <label class="block text-[11px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">Allow users to:</label>
                             <div class="space-y-2">
@@ -859,15 +869,17 @@
                                            class="bb-checkbox w-4 h-4 rounded border-stone-300">
                                     <span class="text-sm text-stone-700">Comment</span>
                                 </label>
-                                <label class="flex items-start gap-2"
-                                       :class="(tt?.duet_disabled && tt?.stitch_disabled) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
-                                    <input type="checkbox" :name="'tiktok_allow_reuse_' + accId" value="true"
-                                           x-model="ttAllowReuse" :disabled="!!(tt?.duet_disabled && tt?.stitch_disabled)"
-                                           class="bb-checkbox w-4 h-4 mt-0.5 rounded border-stone-300">
-                                    <span class="text-sm text-stone-700">
-                                        Reuse of content
-                                        <span class="block text-[11px] text-stone-400 font-normal">Others can Duet, Stitch, use stickers and add this post to their story.</span>
-                                    </span>
+                                <label class="flex items-center gap-2" :class="tt?.duet_disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
+                                    <input type="checkbox" :name="'tiktok_allow_duet_' + accId" value="true"
+                                           x-model="ttAllowDuet" :disabled="!!tt?.duet_disabled"
+                                           class="bb-checkbox w-4 h-4 rounded border-stone-300">
+                                    <span class="text-sm text-stone-700">Duet</span>
+                                </label>
+                                <label class="flex items-center gap-2" :class="tt?.stitch_disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
+                                    <input type="checkbox" :name="'tiktok_allow_stitch_' + accId" value="true"
+                                           x-model="ttAllowStitch" :disabled="!!tt?.stitch_disabled"
+                                           class="bb-checkbox w-4 h-4 rounded border-stone-300">
+                                    <span class="text-sm text-stone-700">Stitch</span>
                                 </label>
                             </div>
                         </div>
@@ -891,7 +903,7 @@
                                            class="bb-checkbox w-4 h-4 mt-0.5 rounded border-stone-300">
                                     <span class="text-sm text-stone-700">
                                         Your brand
-                                        <span class="block text-[11px] text-stone-400 font-normal">You're promoting your own business. The post will be labeled "Promotional content".</span>
+                                        <span class="block text-[11px] text-stone-400 font-normal">You are promoting yourself or your own business.</span>
                                     </span>
                                 </label>
                                 <label class="flex items-start gap-2 cursor-pointer">
@@ -901,9 +913,20 @@
                                            class="bb-checkbox w-4 h-4 mt-0.5 rounded border-stone-300">
                                     <span class="text-sm text-stone-700">
                                         Branded content
-                                        <span class="block text-[11px] text-stone-400 font-normal">You're promoting another brand or in a paid partnership. The post will be labeled "Paid partnership".</span>
+                                        <span class="block text-[11px] text-stone-400 font-normal">You are promoting another brand or a third party.</span>
                                     </span>
                                 </label>
+                                <!-- Exact TikTok content label prompt, shown once a disclosure option is selected -->
+                                <template x-if="ttLabelPrompt">
+                                    <p class="text-[11px] text-stone-600 bg-stone-50 border border-stone-200 rounded-md px-2 py-1.5" x-text="ttLabelPrompt"></p>
+                                </template>
+                                <!-- Disclosure requires at least one sub-option; gate submit via native validity -->
+                                <template x-if="!ttBrandOrganic && !ttBrandContent">
+                                    <p class="text-[11px] text-red-500">You need to indicate if your content promotes yourself, a third party, or both.</p>
+                                </template>
+                                <input type="text" tabindex="-1" aria-hidden="true" class="sr-only"
+                                       :required="ttDisclose"
+                                       :value="(ttBrandOrganic || ttBrandContent) ? '1' : ''">
                             </div>
                         </div>
                         <!-- AI-generated content -->
@@ -927,6 +950,10 @@
                                 <span><a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener" class="underline hover:text-stone-600">Branded Content Policy</a> and </span>
                             </template>
                             <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener" class="underline hover:text-stone-600">Music Usage Confirmation</a>.
+                        </p>
+                        <!-- Processing-time notice (TikTok requires informing users of the publish delay) -->
+                        <p class="text-[11px] text-stone-400">
+                            After you publish, it may take a few minutes for your video to process and appear on your TikTok profile.
                         </p>
                     </div>
                 </template>

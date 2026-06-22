@@ -473,6 +473,47 @@ class TestPublishPost:
         assert init_call.kwargs["json"]["post_info"]["privacy_level"] == "SELF_ONLY"
 
     @patch.object(TikTokProvider, "_request")
+    def test_video_over_max_duration_blocked_before_init(self, mock_request):
+        # creator_info caps duration at 600s; a 900s video must fail fast,
+        # non-retryable, without ever calling video/init.
+        mock_request.return_value = _creator_info_response(["PUBLIC_TO_EVERYONE", "SELF_ONLY"])
+
+        provider = TikTokProvider({"client_key": "k", "client_secret": "s"})
+        content = PublishContent(
+            text="Hello TikTok",
+            media_urls=["https://cdn.example.com/video.mp4"],
+            post_type=PostType.VIDEO,
+            extra={"privacy_level": "PUBLIC_TO_EVERYONE"},
+            video_duration_sec=900,
+        )
+        with pytest.raises(PublishError) as excinfo:
+            provider.publish_post("tok", content)
+
+        assert excinfo.value.retryable is False
+        assert "600" in str(excinfo.value)
+        urls = [call.args[1] for call in mock_request.call_args_list]
+        assert VIDEO_INIT_URL not in urls
+
+    @patch.object(TikTokProvider, "_request")
+    def test_video_within_max_duration_proceeds(self, mock_request):
+        mock_request.side_effect = [
+            _creator_info_response(["PUBLIC_TO_EVERYONE", "SELF_ONLY"]),
+            _init_response(),
+        ]
+
+        provider = TikTokProvider({"client_key": "k", "client_secret": "s"})
+        content = PublishContent(
+            text="Hello TikTok",
+            media_urls=["https://cdn.example.com/video.mp4"],
+            post_type=PostType.VIDEO,
+            extra={"privacy_level": "PUBLIC_TO_EVERYONE"},
+            video_duration_sec=120,
+        )
+        result = provider.publish_post("tok", content)
+
+        assert result.platform_post_id == "v_pub_url~123"
+
+    @patch.object(TikTokProvider, "_request")
     def test_creator_info_failure_does_not_block_publish(self, mock_request):
         mock_request.side_effect = [
             APIError("creator_info down", platform="TikTok", status_code=500),

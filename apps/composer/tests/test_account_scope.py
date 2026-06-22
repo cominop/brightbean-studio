@@ -221,22 +221,24 @@ class TikTokExtrasSyncTests(AccountScopeTestsBase):
         extra = self.tt_pp.platform_extra
         self.assertEqual(extra["privacy_level"], "SELF_ONLY")
         self.assertFalse(extra["disable_comment"])
-        # "Reuse of content" checkbox absent from POST → both flags disabled.
+        # Duet/Stitch checkboxes absent from POST → both interactions disabled.
         self.assertTrue(extra["disable_duet"])
         self.assertTrue(extra["disable_stitch"])
         self.assertTrue(extra["brand_content_toggle"])
         self.assertFalse(extra["brand_organic_toggle"])
         self.assertTrue(extra["is_aigc"])
 
-    def test_allow_reuse_enables_duet_and_stitch_together(self):
+    def test_duet_and_stitch_toggle_independently(self):
+        # Duet on, Stitch left off → only stitch disabled. Confirms the two
+        # interactions are controlled independently (TikTok's per-interaction rule).
         response = self.client.post(
             self.save_url,
-            data=self._tiktok_payload(privacy_level="SELF_ONLY", allow_reuse="true"),
+            data=self._tiktok_payload(privacy_level="SELF_ONLY", allow_duet="true"),
         )
         self.assertIn(response.status_code, (200, 204, 302))
         self.tt_pp.refresh_from_db()
         self.assertFalse(self.tt_pp.platform_extra["disable_duet"])
-        self.assertFalse(self.tt_pp.platform_extra["disable_stitch"])
+        self.assertTrue(self.tt_pp.platform_extra["disable_stitch"])
 
     def test_invalid_privacy_level_left_unset(self):
         response = self.client.post(self.save_url, data=self._tiktok_payload(privacy_level="BOGUS"))
@@ -262,3 +264,36 @@ class TikTokExtrasSyncTests(AccountScopeTestsBase):
         self.assertIn(response.status_code, (200, 204, 302))
         self.tt_pp.refresh_from_db()
         self.assertEqual(self.tt_pp.platform_extra, {"privacy_level": "SELF_ONLY"})
+
+
+class TikTokComposerDefaultsTests(AccountScopeTestsBase):
+    """TikTok's audit requires the composer to ship NO default privacy level and
+    NO pre-checked interaction toggles. The defaults live in the Alpine init in
+    templates/composer/compose.html, so these guard the rendered expressions
+    against silently regressing back to a default.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.compose_url = reverse("composer:compose", kwargs={"workspace_id": self.workspace.id})
+
+    def test_privacy_renders_with_no_default(self):
+        response = self.client.get(self.compose_url)
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        # No pre-selected privacy level (TikTok "no default value" rule)…
+        self.assertIn("privacy_level || ''", html)
+        self.assertNotIn("privacy_level || 'PUBLIC_TO_EVERYONE'", html)
+        # …and the creator-info effect must not auto-select an option either.
+        self.assertNotIn("ttPrivacy = opts[0]", html)
+
+    def test_interaction_toggles_unchecked_by_default(self):
+        response = self.client.get(self.compose_url)
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        # Comment / Duet / Stitch start unchecked unless a saved extra explicitly
+        # enabled them (=== false). A truthy-but-empty platformExtras[accId] ({})
+        # must NOT count as "enabled", so each guard checks its field, not the object.
+        self.assertIn("ttAllowComment: platformExtras[accId]?.disable_comment === false", html)
+        self.assertIn("ttAllowDuet: platformExtras[accId]?.disable_duet === false", html)
+        self.assertIn("ttAllowStitch: platformExtras[accId]?.disable_stitch === false", html)

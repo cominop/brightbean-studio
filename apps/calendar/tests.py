@@ -485,6 +485,64 @@ class RecurringPostTimezoneTests(TestCase):
         self.assertEqual(local_dates[-1], date(2026, 6, 20))
 
 
+class RecurringPostPlatformExtraTests(TestCase):
+    """Recurrence clones must carry each PlatformPost's platform_extra so the
+    creator's per-platform settings (e.g. TikTok privacy + interaction flags)
+    survive into every generated occurrence rather than reverting to provider
+    defaults at publish time.
+    """
+
+    def test_recurrence_preserves_platform_extra(self):
+        org = Organization.objects.create(name="Extra Org")
+        ws = Workspace.objects.create(organization=org, name="Extra WS")
+        utc = zoneinfo.ZoneInfo("UTC")
+        account = SocialAccount.objects.create(
+            workspace=ws,
+            platform="tiktok",
+            account_platform_id="tt-extra",
+            account_name="TikTok",
+            connection_status=SocialAccount.ConnectionStatus.CONNECTED,
+        )
+        source = Post.objects.create(
+            workspace=ws,
+            caption="extra-recurrence",
+            scheduled_at=datetime(2026, 3, 2, 9, 0, tzinfo=utc),
+        )
+        tiktok_extra = {
+            "privacy_level": "SELF_ONLY",
+            "disable_comment": False,
+            "disable_duet": True,
+            "disable_stitch": False,
+            "brand_organic_toggle": True,
+            "brand_content_toggle": False,
+            "is_aigc": False,
+        }
+        PlatformPost.objects.create(
+            post=source,
+            social_account=account,
+            platform_extra=tiktok_extra,
+            scheduled_at=source.scheduled_at,
+            status="scheduled",
+        )
+        RecurrenceRule.objects.create(
+            post=source,
+            frequency=RecurrenceRule.Frequency.WEEKLY,
+            interval=1,
+            end_date=date(2026, 4, 30),
+        )
+
+        fixed_now = datetime(2026, 3, 1, 12, 0, tzinfo=utc)
+        with patch("apps.calendar.tasks.timezone.now", return_value=fixed_now):
+            generated = generate_recurring_posts()
+
+        self.assertGreater(generated, 0)
+        clones = Post.objects.filter(workspace=ws, caption="extra-recurrence").exclude(id=source.id)
+        self.assertTrue(clones.exists())
+        for clone in clones:
+            clone_pp = clone.platform_posts.get(social_account=account)
+            self.assertEqual(clone_pp.platform_extra, tiktok_extra)
+
+
 class PublishTabTimezoneTests(TestCase):
     """The publish tabs must render times in a user-supplied ?tz= without 500ing."""
 

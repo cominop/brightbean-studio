@@ -270,7 +270,7 @@ class TikTokProvider(SocialProvider):
                 retryable=False,
             )
 
-        self._check_creator_privacy_options(access_token, privacy_level)
+        self._check_creator_constraints(access_token, privacy_level, content)
 
         # Prefer FILE_UPLOAD: PULL_FROM_URL requires the source domain to be
         # verified with TikTok, which presigned S3/R2 URLs can't satisfy.
@@ -284,8 +284,8 @@ class TikTokProvider(SocialProvider):
             retryable=False,
         )
 
-    def _check_creator_privacy_options(self, access_token: str, privacy_level: str) -> None:
-        """Validate the requested privacy level against creator_info.
+    def _check_creator_constraints(self, access_token: str, privacy_level: str, content: PublishContent) -> None:
+        """Validate privacy level and video duration against creator_info.
 
         A creator_info failure is logged and ignored — a transient outage of
         that endpoint must not block publishing; the video init call surfaces
@@ -307,6 +307,20 @@ class TikTokProvider(SocialProvider):
                 message = f"{message} {UNAUDITED_CLIENT_HINT}"
             raise PublishError(
                 message,
+                platform=self.platform_name,
+                raw_response=info,
+                retryable=False,
+            )
+
+        # TikTok's UX guidelines require checking the video against the
+        # creator's max post duration before uploading. Skip silently when
+        # either value is unknown (0/None) so we never block on missing data.
+        max_duration = info.get("max_video_post_duration_sec")
+        duration = content.video_duration_sec
+        if max_duration and duration and duration > max_duration:
+            raise PublishError(
+                f"Video is {round(duration)}s long but TikTok allows at most "
+                f"{int(max_duration)}s for this account. Trim the video and try again.",
                 platform=self.platform_name,
                 raw_response=info,
                 retryable=False,

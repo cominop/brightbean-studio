@@ -1,5 +1,6 @@
 """Background tasks for the Content Calendar (F-2.3)."""
 
+import copy
 import logging
 import zoneinfo
 from datetime import datetime, timedelta
@@ -102,6 +103,11 @@ def generate_recurring_posts():
                             platform_specific_caption=pp.platform_specific_caption,
                             platform_specific_first_comment=pp.platform_specific_first_comment,
                             platform_specific_media=pp.platform_specific_media,
+                            # Carry per-platform settings (e.g. TikTok privacy level,
+                            # comment/duet/stitch toggles, disclosure flags) into each
+                            # recurrence. Without this the publisher falls back to
+                            # provider defaults and loses the creator's choices.
+                            platform_extra=copy.deepcopy(pp.platform_extra) if pp.platform_extra else {},
                             scheduled_at=pp_scheduled,
                             status="scheduled",
                         )

@@ -142,3 +142,6 @@ class PublishContent:
     description: str | None = None
     first_comment: str | None = None
     extra: dict = field(default_factory=dict)
+    # Duration of the primary video in seconds, when known. Lets providers
+    # enforce platform limits (e.g. TikTok's max_video_post_duration_sec).
+    video_duration_sec: float | None = None

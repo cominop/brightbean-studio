@@ -187,14 +187,13 @@ def _sync_platform_posts(request, post, workspace, initial_status=None):
                 # An empty/invalid submit (required-validation bypassed) must
                 # not wipe a previously saved choice.
                 privacy = (pp.platform_extra or {}).get("privacy_level", "")
-            # "Reuse of content" mirrors TikTok's own UI: one switch covering
-            # Duet, Stitch, stickers and story reuse — the API still takes
-            # the two flags separately.
-            allow_reuse = request.POST.get(f"tiktok_allow_reuse_{acc_id}") == "true"
+            # Comment / Duet / Stitch are independent interaction settings —
+            # TikTok's UX guidelines require a separate toggle per interaction,
+            # each greyed out on its own when the creator disabled it.
             extra = {
                 "disable_comment": request.POST.get(f"tiktok_allow_comment_{acc_id}") != "true",
-                "disable_duet": not allow_reuse,
-                "disable_stitch": not allow_reuse,
+                "disable_duet": request.POST.get(f"tiktok_allow_duet_{acc_id}") != "true",
+                "disable_stitch": request.POST.get(f"tiktok_allow_stitch_{acc_id}") != "true",
                 "brand_organic_toggle": request.POST.get(f"tiktok_brand_organic_{acc_id}") == "true",
                 "brand_content_toggle": request.POST.get(f"tiktok_brand_content_{acc_id}") == "true",
                 "is_aigc": request.POST.get(f"tiktok_is_aigc_{acc_id}") == "true",
