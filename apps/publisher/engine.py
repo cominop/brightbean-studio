@@ -50,14 +50,24 @@ def _resolve_publish_credentials(account):
     """
     platform = account.platform
 
-    try:
-        cred = PlatformCredential.objects.for_org(account.workspace.organization_id).get(
-            platform=platform, is_configured=True
-        )
-        credentials = dict(cred.credentials)
-    except PlatformCredential.DoesNotExist:
-        env_creds = getattr(settings, "PLATFORM_CREDENTIALS_FROM_ENV", {})
-        credentials = dict(env_creds.get(platform, {}))
+    credentials = {}
+    if account.workspace_id:
+        try:
+            cred = PlatformCredential.objects.filter(
+                workspace_id=account.workspace_id, platform=platform, is_configured=True
+            ).latest("updated_at")
+            credentials = dict(cred.credentials)
+        except PlatformCredential.DoesNotExist:
+            pass
+    if not credentials:
+        try:
+            cred = PlatformCredential.objects.for_org(account.workspace.organization_id).get(
+                platform=platform, workspace__isnull=True, is_configured=True
+            )
+            credentials = dict(cred.credentials)
+        except PlatformCredential.DoesNotExist:
+            env_creds = getattr(settings, "PLATFORM_CREDENTIALS_FROM_ENV", {})
+            credentials = dict(env_creds.get(platform, {}))
 
     if platform == "mastodon" and account.instance_url:
         from apps.common.validators import is_safe_url

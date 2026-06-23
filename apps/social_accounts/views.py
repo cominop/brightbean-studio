@@ -31,15 +31,34 @@ OAUTH_STATE_MAX_AGE = 600  # 10 minutes
 OAUTH_SESSION_KEY = "social_oauth"
 
 
-def _get_provider_for_platform(platform: str, org_id, **extra_credentials):
-    """Resolve app credentials and instantiate the provider."""
+def _get_provider_for_platform(platform: str, org_id, workspace_id=None, **extra_credentials):
+    """Resolve app credentials and instantiate the provider.
+    
+    Resolution order: workspace-level → org-level → env fallback.
+    """
     from providers import get_provider
 
-    # Try org-specific credentials first, then env fallback
+    # 1. Try workspace-specific credentials
+    if workspace_id:
+        try:
+            cred = PlatformCredential.objects.filter(
+                workspace_id=workspace_id, platform=platform, is_configured=True
+            ).latest("updated_at")
+            credentials = cred.credentials
+            if extra_credentials:
+                credentials = {**credentials, **extra_credentials}
+            return get_provider(platform, credentials)
+        except PlatformCredential.DoesNotExist:
+            pass
+
+    # 2. Try org-specific credentials (workspace NULL = org-level)
     try:
-        cred = PlatformCredential.objects.for_org(org_id).get(platform=platform, is_configured=True)
+        cred = PlatformCredential.objects.for_org(org_id).get(
+            platform=platform, workspace__isnull=True, is_configured=True
+        )
         credentials = cred.credentials
     except PlatformCredential.DoesNotExist:
+        # 3. Fall back to env vars
         env_creds = getattr(settings, "PLATFORM_CREDENTIALS_FROM_ENV", {})
         credentials = env_creds.get(platform, {})
 
@@ -240,7 +259,7 @@ def connect_platform(request, workspace_id):
         return redirect("social_accounts:connect_mastodon", workspace_id=workspace_id)
 
     # Standard OAuth flow
-    provider = _get_provider_for_platform(platform, request.org.id)
+    provider = _get_provider_for_platform(platform, request.org.id, workspace_id=request.workspace.id)
     nonce = secrets.token_urlsafe(32)
     state = _sign_state(workspace_id, platform, request.user.id, nonce)
 
@@ -323,7 +342,7 @@ def oauth_callback(request, platform):
         if platform == PlatformCredential.Platform.MASTODON:
             extra_creds = _resolve_mastodon_extra_creds(session_data)
 
-        provider = _get_provider_for_platform(platform, request.org.id, **extra_creds)
+        provider = _get_provider_for_platform(platform, request.org.id, workspace_id=workspace_id, **extra_creds)
         redirect_uri = _build_redirect_uri(request, platform)
         tokens = provider.exchange_code(code, redirect_uri)
         profile = provider.get_profile(tokens.access_token)
@@ -495,7 +514,7 @@ def connect_bluesky(request, workspace_id):
         )
 
     try:
-        provider = _get_provider_for_platform(PlatformCredential.Platform.BLUESKY, request.org.id)
+        provider = _get_provider_for_platform(PlatformCredential.Platform.BLUESKY, request.org.id, workspace_id=request.workspace.id)
         tokens = provider.create_session(handle, app_password)
         profile = provider.get_profile(tokens.access_token)
 
@@ -571,6 +590,7 @@ def connect_mastodon(request, workspace_id):
             provider = _get_provider_for_platform(
                 PlatformCredential.Platform.MASTODON,
                 request.org.id,
+                workspace_id=request.workspace.id,
                 instance_url=instance_url,
             )
             redirect_uri = _build_redirect_uri(request, PlatformCredential.Platform.MASTODON)
@@ -598,6 +618,7 @@ def connect_mastodon(request, workspace_id):
     provider = _get_provider_for_platform(
         PlatformCredential.Platform.MASTODON,
         request.org.id,
+        workspace_id=request.workspace.id,
         instance_url=instance_url,
         client_id=client_id,
         client_secret=client_secret,
@@ -645,7 +666,7 @@ def reconnect(request, workspace_id, account_id):
         return redirect("social_accounts:connect_mastodon", workspace_id=workspace_id)
 
     # Standard OAuth reconnect
-    provider = _get_provider_for_platform(platform, request.org.id)
+    provider = _get_provider_for_platform(platform, request.org.id, workspace_id=request.workspace.id)
     nonce = secrets.token_urlsafe(32)
     state = _sign_state(workspace_id, platform, request.user.id, nonce)
 
@@ -674,7 +695,7 @@ def disconnect(request, workspace_id, account_id):
 
     # Try to revoke token
     try:
-        provider = _get_provider_for_platform(account.platform, request.org.id)
+        provider = _get_provider_for_platform(account.platform, request.org.id, workspace_id=account.workspace_id)
         if account.oauth_access_token:
             provider.revoke_token(account.oauth_access_token)
     except Exception:

@@ -32,6 +32,14 @@ class PlatformCredential(models.Model):
         on_delete=models.CASCADE,
         related_name="platform_credentials",
     )
+    workspace = models.ForeignKey(
+        "workspaces.Workspace",
+        on_delete=models.CASCADE,
+        related_name="platform_credentials",
+        null=True,
+        blank=True,
+        help_text="Workspace-scoped override. NULL = org-level credential.",
+    )
     platform = models.CharField(max_length=30, choices=Platform.choices)
     credentials = EncryptedJSONField(
         default=dict,
@@ -51,7 +59,18 @@ class PlatformCredential(models.Model):
 
     class Meta:
         db_table = "credentials_platform_credential"
-        unique_together = [("organization", "platform")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "platform"],
+                condition=models.Q(workspace__isnull=True),
+                name="unique_org_platform_null_workspace",
+            ),
+            models.UniqueConstraint(
+                fields=["workspace", "platform"],
+                condition=models.Q(workspace__isnull=False),
+                name="unique_workspace_platform",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.organization.name} - {self.get_platform_display()}"
