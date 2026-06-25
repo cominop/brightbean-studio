@@ -231,6 +231,7 @@ def create(request, payload: CreatePostRequest):
             media_asset_ids=payload.media_asset_ids,
             title=payload.title,
             first_comment=payload.first_comment,
+            tags=payload.tags,
             scheduled_at=payload.scheduled_at,
             author=request.user if not request.user.is_anonymous else None,
             status="scheduled" if payload.action == "schedule" else "draft",

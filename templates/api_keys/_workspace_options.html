@@ -35,7 +35,7 @@
         Permissions
     </label>
     {% if grantable_permissions %}
-    <div class="space-y-1.5">
+    <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
         {% for perm_key, label in grantable_permissions %}
         <label class="flex items-start gap-2 text-sm px-2 py-1.5 rounded cursor-pointer"
                style="background: var(--surface-1, #F9FAFB); border: 1px solid var(--border);">

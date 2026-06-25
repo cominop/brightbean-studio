@@ -153,6 +153,10 @@ class CreatePostRequest(Schema):
         max_length=255,
         description="Required on platforms where ``needs_title=true`` (YouTube, Pinterest). Ignored otherwise.",
     )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Hashtags or keywords for categorization. Rendered in the composer's Tags field.",
+    )
     first_comment: str = Field(
         "",
         max_length=10_000,

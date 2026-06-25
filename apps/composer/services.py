@@ -59,6 +59,7 @@ def create_post(
     media_asset_ids: Iterable[Any] | None = None,
     title: str = "",
     first_comment: str = "",
+    tags: list[str] | None = None,
     scheduled_at: dt.datetime | None = None,
     author=None,
     status: str = "draft",
@@ -141,6 +142,7 @@ def create_post(
             title=title,
             caption=caption,
             first_comment=first_comment,
+            tags=tags or [],
             scheduled_at=scheduled_at if status == "scheduled" else None,
         )
         # Each override field is independent: ``None`` (or omitted)

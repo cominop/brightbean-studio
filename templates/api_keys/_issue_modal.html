@@ -10,7 +10,7 @@
         <div @click.outside="showIssueModal = false"
              x-show="showIssueModal" x-transition
              class="w-full max-w-xl mx-4 rounded-xl"
-             style="background: var(--surface-0); border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.18);">
+             style="background: var(--surface-0); border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.18); max-height: 90vh; overflow-y: auto;">
             <form method="POST" action="{% url 'api_keys:issue' %}" class="p-6">
                 {% csrf_token %}
                 <div class="flex items-start justify-between mb-5">
