@@ -52,6 +52,7 @@ urlpatterns = [
     path("drafts/", views.drafts_list, name="drafts_list"),
     # Post delete
     path("compose/<uuid:post_id>/delete/", views.post_delete, name="post_delete"),
+    path("posts/bulk-action/", views.posts_bulk_action, name="posts_bulk_action"),
     # Content Categories
     path("categories/", views.category_list, name="category_list"),
     path("categories/create/", views.category_create, name="category_create"),

@@ -1349,11 +1349,12 @@ def remove_pending_media(request, workspace_id, asset_id):
 @login_required
 @require_GET
 def drafts_list(request, workspace_id):
-    """List all drafts for this workspace."""
+    """List all drafts for this workspace with pagination."""
     workspace = _get_workspace(request, workspace_id)
-    # A post is a "draft" when at least one of its PlatformPost children is in
-    # the draft state and none have moved into a more advanced workflow stage.
-    # Easiest correct query: any post whose only child statuses are "draft".
+    per_page = int(request.GET.get("per_page", "25"))
+    per_page = min(max(per_page, 10), 100)  # clamp 10-100
+    page_num = int(request.GET.get("page", "1"))
+
     drafts = (
         Post.objects.for_workspace(workspace.id)
         .filter(platform_posts__status="draft")
@@ -1373,12 +1374,17 @@ def drafts_list(request, workspace_id):
         .order_by("-updated_at")
     )
 
+    from django.core.paginator import Paginator
+    paginator = Paginator(drafts, per_page)
+    page_obj = paginator.get_page(page_num)
+
     return render(
         request,
         "composer/drafts_list.html",
         {
             "workspace": workspace,
-            "drafts": drafts,
+            "page_obj": page_obj,
+            "per_page": per_page,
         },
     )
 
@@ -3135,4 +3141,59 @@ def _render_explore(request, workspace, category):
             "active_category": category,
             "curated_feeds": curated,
         },
+    )
+
+
+@login_required
+@require_POST
+def posts_bulk_action(request, workspace_id):
+    """Handle bulk actions on posts: delete, send_to_queue, publish, reject."""
+    from apps.workspaces.models import Workspace
+    from apps.composer.models import Post, PlatformPost
+
+    def _get_workspace(request, workspace_id):
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.is_authenticated:
+            raise PermissionDenied("Authentication required.")
+        from apps.members.models import WorkspaceMembership
+        has_membership = WorkspaceMembership.objects.filter(
+            user=request.user, workspace=workspace
+        ).exists()
+        if not has_membership:
+            raise PermissionDenied("You are not a member of this workspace.")
+        return workspace
+
+    workspace = _get_workspace(request, workspace_id)
+    post_ids = request.POST.getlist("post_ids")
+    action = request.POST.get("action", "")
+    comment = request.POST.get("comment", "")
+
+    if not post_ids or not action:
+        return HttpResponse(status=400)
+
+    posts = Post.objects.filter(id__in=post_ids, workspace=workspace)
+
+    match action:
+        case "delete":
+            posts.delete()
+        case "send_to_queue":
+            PlatformPost.objects.filter(
+                post_id__in=post_ids, post__workspace=workspace, status="draft"
+            ).update(status="pending_review")
+        case "publish":
+            PlatformPost.objects.filter(
+                post_id__in=post_ids, post__workspace=workspace,
+                status__in=["approved", "scheduled"]
+            ).update(status="publishing")
+        case "reject":
+            PlatformPost.objects.filter(
+                post_id__in=post_ids, post__workspace=workspace,
+                status__in=["pending_review", "pending_client"]
+            ).update(status="rejected", publish_error=comment[:255])
+        case _:
+            return HttpResponse(status=400)
+
+    return HttpResponse(
+        status=204,
+        headers={"HX-Trigger": "bulkActionComplete"},
     )

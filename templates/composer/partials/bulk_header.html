@@ -1,0 +1,124 @@
+{% comment %}
+Reusable bulk actions header for post list views.
+Expects Alpine x-data="{ selectedPosts: [] }" on a parent element.
+Usage: {% include "composer/partials/bulk_header.html" %}
+{% endcomment %}
+<div class="flex items-center gap-3 mb-3">
+    <select x-ref="bulkSelect"
+            class="text-[0.8125rem] px-3 py-1.5 rounded-lg border border-stone-200 bg-white text-stone-700 focus:outline-none focus:ring-2 focus:ring-orange-300"
+            :disabled="selectedPosts.length === 0">
+        <option value="">Bulk Actions</option>
+        <option value="delete">Delete</option>
+        <option value="send_to_queue">Send to Queue</option>
+        <option value="publish">Publish</option>
+        <option value="reject">Reject</option>
+    </select>
+    <button @click="
+            const action = $refs.bulkSelect.value;
+            if (!action || selectedPosts.length === 0) return;
+            if (action === 'delete') {
+                $refs.deleteConfirmModal.showModal();
+            } else if (action === 'reject') {
+                $refs.rejectCommentModal.showModal();
+            } else {
+                const form = $refs.bulkForm;
+                form.innerHTML = '';
+                selectedPosts.forEach(id => {
+                    const inp = document.createElement('input');
+                    inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
+                    form.appendChild(inp);
+                });
+                const aInp = document.createElement('input');
+                aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = action;
+                form.appendChild(aInp);
+                htmx.trigger(form, 'submit');
+                selectedPosts = [];
+            }
+        "
+            class="px-3 py-1.5 text-[0.8125rem] font-medium rounded-full transition-colors"
+            :class="selectedPosts.length > 0 ? 'bg-stone-900 text-white hover:bg-stone-800 cursor-pointer' : 'bg-stone-100 text-stone-400 cursor-not-allowed'"
+            :disabled="selectedPosts.length === 0">
+        Apply
+    </button>
+    <span x-show="selectedPosts.length > 0" x-cloak
+          class="text-sm text-stone-500" x-text="selectedPosts.length + ' selected'"></span>
+</div>
+
+<!-- Hidden bulk form (HTMX POST) -->
+<form x-ref="bulkForm"
+      hx-post="{% url 'composer:posts_bulk_action' workspace_id=workspace.id %}"
+      hx-trigger="none"
+      hx-target="#post-list-container"
+      hx-select="#post-list-container"
+      hx-swap="outerHTML"
+      hx-on::after-request="selectedPosts = []; if(document.querySelector('[x-ref=bulkSelect]')) document.querySelector('[x-ref=bulkSelect]').selectedIndex = 0;"
+      class="hidden"></form>
+
+<!-- Delete confirmation modal -->
+<dialog x-ref="deleteConfirmModal" class="rounded-xl shadow-xl p-0 max-w-lg w-full backdrop:bg-black/30 border-0">
+    <form method="dialog" class="p-6">
+        <h3 class="text-lg font-bold text-stone-900 mb-2">Delete Selected Posts</h3>
+        <p class="text-sm text-stone-600 mb-4">
+            You are about to delete <strong x-text="selectedPosts.length"></strong> post(s) and their associated publishing tasks.
+            This action is irreversible. Proceed?
+        </p>
+        <div class="flex justify-end gap-2">
+            <button type="button" @click="$refs.deleteConfirmModal.close()"
+                    class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-full transition-colors">Cancel</button>
+            <button type="submit"
+                    class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
+                    @click="
+                        const form = $refs.bulkForm;
+                        form.innerHTML = '';
+                        selectedPosts.forEach(id => {
+                            const inp = document.createElement('input');
+                            inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
+                            form.appendChild(inp);
+                        });
+                        const aInp = document.createElement('input');
+                        aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = 'delete';
+                        form.appendChild(aInp);
+                        htmx.trigger(form, 'submit');
+                        $refs.deleteConfirmModal.close();
+                    ">
+                Delete <span x-text="selectedPosts.length"></span> Post(s)
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Reject comment modal -->
+<dialog x-ref="rejectCommentModal" class="rounded-xl shadow-xl p-0 max-w-lg w-full backdrop:bg-black/30 border-0">
+    <form method="dialog" class="p-6">
+        <h3 class="text-lg font-bold text-stone-900 mb-2">Reject Selected Posts</h3>
+        <p class="text-sm text-stone-600 mb-4">Please provide the rejection reason for all selected posts.</p>
+        <textarea x-ref="rejectComment" rows="3" maxlength="255"
+                  class="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent resize-none"
+                  placeholder="Reason for rejection..."></textarea>
+        <div class="flex justify-end gap-2 mt-4">
+            <button type="button" @click="$refs.rejectCommentModal.close()"
+                    class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-full transition-colors">Cancel</button>
+            <button type="submit"
+                    class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
+                    @click="
+                        const form = $refs.bulkForm;
+                        form.innerHTML = '';
+                        selectedPosts.forEach(id => {
+                            const inp = document.createElement('input');
+                            inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
+                            form.appendChild(inp);
+                        });
+                        const aInp = document.createElement('input');
+                        aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = 'reject';
+                        form.appendChild(aInp);
+                        const cInp = document.createElement('input');
+                        cInp.type = 'hidden'; cInp.name = 'comment'; cInp.value = $refs.rejectComment.value;
+                        form.appendChild(cInp);
+                        htmx.trigger(form, 'submit');
+                        $refs.rejectCommentModal.close();
+                    ">
+                Reject
+            </button>
+        </div>
+    </form>
+</dialog>

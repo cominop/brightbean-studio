@@ -11,9 +11,9 @@
              x-show="showIssueModal" x-transition
              class="w-full max-w-xl mx-4 rounded-xl"
              style="background: var(--surface-0); border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.18); max-height: 90vh; overflow-y: auto;">
-            <form method="POST" action="{% url 'api_keys:issue' %}" class="p-6">
+            <form method="POST" action="{% url 'api_keys:issue' %}" class="flex flex-col" style="max-height: 90vh;">
                 {% csrf_token %}
-                <div class="flex items-start justify-between mb-5">
+                <div class="flex items-start justify-between px-6 pt-6 pb-0 shrink-0">
                     <div>
                         <h3 class="text-lg font-semibold" style="color: var(--text-primary);">Issue a new API key</h3>
                         <p class="text-xs mt-1" style="color: var(--text-tertiary);">
@@ -25,7 +25,7 @@
                             style="color: var(--text-tertiary);">&times;</button>
                 </div>
 
-                <div class="space-y-4">
+                <div class="overflow-y-auto px-6 py-4 space-y-4 grow min-h-0">
                     <div>
                         <label for="name" class="block text-sm font-semibold mb-1" style="color: var(--text-primary);">Name</label>
                         <input type="text" id="name" name="name" required maxlength="100" autocomplete="off"
@@ -63,7 +63,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-3 mt-6">
+                <div class="flex items-center justify-end gap-3 px-6 pb-6 pt-0 shrink-0">
                     <button type="button" @click="showIssueModal = false"
                             class="btn-neutral px-4 py-2 text-sm font-medium rounded-full cursor-pointer"
                             style="background: var(--neutral-100); color: var(--text-primary);">
