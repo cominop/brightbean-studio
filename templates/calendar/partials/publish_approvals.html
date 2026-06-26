@@ -175,8 +175,8 @@ All members can view; action buttons shown conditionally based on can_approve pe
         <div class="bg-white rounded-xl border border-stone-200 p-4 hover:border-stone-300 transition-colors">
             <div class="flex items-center gap-3">
                 {% if can_approve %}
-                <input type="checkbox" :value="'{{ pp.post_id }}'" x-model="selectedPosts"
-                       class="w-4 h-4 rounded border-stone-300 text-orange-500 focus:ring-orange-300">
+                <input type="checkbox" value="{{ pp.post_id }}" @change="if($el.checked){if(!selectedPosts.includes($el.value))selectedPosts.push($el.value)}else{selectedPosts=selectedPosts.filter(v=>v!==$el.value)}"
+                       class="approval-checkbox w-4 h-4 rounded border-stone-300" style="accent-color:var(--primary)">
                 {% endif %}
                 <!-- Media thumbnail -->
                 {% with first_att=pp.post.media_attachments.all.0 %}

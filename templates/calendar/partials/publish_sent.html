@@ -32,22 +32,8 @@ Shows all published/partially_published platform posts. Loaded via HTMX into #ta
     <table class="w-full">
         <thead>
             <tr class="border-b border-stone-200 text-left">
-                <th class="px-4 py-3 w-10">
-                    <input type="checkbox"
-                           @click="
-                                const checked = $event.target.checked;
-                                const checkboxes = document.querySelectorAll('[x-ref=sentCheckbox]');
-                                checkboxes.forEach(cb => {
-                                    const val = cb.value;
-                                    if (checked) {
-                                        if (!selectedPosts.includes(val)) selectedPosts.push(val);
-                                    } else {
-                                        selectedPosts = selectedPosts.filter(v => v !== val);
-                                    }
-                                });
-                           "
-                           class="w-4 h-4 rounded border-stone-300 cursor-pointer"
-                           style="accent-color: var(--primary);">
+                <th class="px-4 py-3" style="width:40px">
+                    <input type="checkbox" @change="const cbs=document.querySelectorAll('.sent-checkbox'); cbs.forEach(cb=>cb.checked=$el.checked); selectedPosts=$el.checked?Array.from(cbs).map(cb=>cb.value):[];" class="w-4 h-4 rounded border-stone-300 cursor-pointer" style="accent-color:var(--primary)">
                 </th>
                 <th class="px-4 py-3 text-xs font-semibold text-stone-400 uppercase tracking-wider">Media</th>
                 <th class="px-4 py-3 text-xs font-semibold text-stone-400 uppercase tracking-wider">Status</th>
@@ -63,10 +49,9 @@ Shows all published/partially_published platform posts. Loaded via HTMX into #ta
                 @click="window.location='{% url 'composer:compose_edit' workspace_id=workspace.id post_id=pp.post_id %}?account={{ pp.social_account_id }}'">
                 <td class="px-4 py-3" @click.stop>
                     <input type="checkbox"
-                           x-ref="sentCheckbox"
-                           :value="'{{ pp.id }}'"
-                           x-model="selectedPosts"
-                           class="w-4 h-4 rounded border-stone-300 cursor-pointer"
+                           value="{{ pp.id }}"
+                           @change="if($el.checked){if(!selectedPosts.includes($el.value))selectedPosts.push($el.value)}else{selectedPosts=selectedPosts.filter(v=>v!==$el.value)}"
+                           class="sent-checkbox w-4 h-4 rounded border-stone-300 cursor-pointer"
                            style="accent-color: var(--primary);">
                 </td>
                 <td class="px-4 py-3">

@@ -35,7 +35,7 @@ Shows all scheduled platform posts grouped by date. Loaded via HTMX into #tab-co
             <div class="flex gap-4 items-start">
                 <!-- Checkbox column -->
                 <div class="pt-6 shrink-0">
-                    <input type="checkbox" :value="pp.id" x-model="selectedPosts"
+                    <input type="checkbox" value="{{ pp.id }}" @change="if($el.checked){if(!selectedPosts.includes($el.value))selectedPosts.push($el.value)}else{selectedPosts=selectedPosts.filter(v=>v!==$el.value)}"
                            class="post-checkbox w-4 h-4 rounded border-stone-300 cursor-pointer"
                            style="accent-color: var(--primary);"
                            @click.stop>
