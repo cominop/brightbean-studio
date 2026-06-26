@@ -3,11 +3,52 @@ Sent tab partial for the Publish page.
 Shows all published/partially_published platform posts. Loaded via HTMX into #tab-content.
 {% endcomment %}
 
-<div x-data{% if is_htmx %} class="tab-slide-in"{% endif %}>
+<div x-data="{ selectedPosts: [] }"{% if is_htmx %} class="tab-slide-in"{% endif %}>
     {% if platform_posts %}
+    <!-- Bulk actions header (WordPress-style) -->
+    <div class="flex items-center gap-3 mb-3">
+        <select x-ref="sentBulkSelect"
+                class="text-[0.8125rem] px-3 py-1.5 rounded-lg border border-stone-200 bg-white text-stone-700 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                :disabled="selectedPosts.length === 0">
+            <option value="">Bulk Actions</option>
+            <option value="delete">Delete</option>
+        </select>
+        <button @click="
+                const action = $refs.sentBulkSelect.value;
+                if (!action || selectedPosts.length === 0) return;
+                if (action === 'delete') {
+                    $refs.sentDeleteModal.showModal();
+                }
+            "
+                class="px-3 py-1.5 text-[0.8125rem] font-medium rounded-full transition-colors"
+                :class="selectedPosts.length > 0 ? 'bg-stone-900 text-white hover:bg-stone-800 cursor-pointer' : 'bg-stone-100 text-stone-400 cursor-not-allowed'"
+                :disabled="selectedPosts.length === 0">
+            Apply
+        </button>
+        <span x-show="selectedPosts.length > 0" x-cloak
+              class="text-sm text-stone-500" x-text="selectedPosts.length + ' selected'"></span>
+    </div>
+
     <table class="w-full">
         <thead>
             <tr class="border-b border-stone-200 text-left">
+                <th class="px-4 py-3 w-10">
+                    <input type="checkbox"
+                           @click="
+                                const checked = $event.target.checked;
+                                const checkboxes = document.querySelectorAll('[x-ref=sentCheckbox]');
+                                checkboxes.forEach(cb => {
+                                    const val = cb.value;
+                                    if (checked) {
+                                        if (!selectedPosts.includes(val)) selectedPosts.push(val);
+                                    } else {
+                                        selectedPosts = selectedPosts.filter(v => v !== val);
+                                    }
+                                });
+                           "
+                           class="w-4 h-4 rounded border-stone-300 cursor-pointer"
+                           style="accent-color: var(--primary);">
+                </th>
                 <th class="px-4 py-3 text-xs font-semibold text-stone-400 uppercase tracking-wider">Media</th>
                 <th class="px-4 py-3 text-xs font-semibold text-stone-400 uppercase tracking-wider">Status</th>
                 <th class="px-4 py-3 text-xs font-semibold text-stone-400 uppercase tracking-wider">Published</th>
@@ -20,6 +61,14 @@ Shows all published/partially_published platform posts. Loaded via HTMX into #ta
             {% for pp in platform_posts %}
             <tr class="border-b border-stone-100 hover:bg-stone-50 transition-colors duration-100 cursor-pointer"
                 @click="window.location='{% url 'composer:compose_edit' workspace_id=workspace.id post_id=pp.post_id %}?account={{ pp.social_account_id }}'">
+                <td class="px-4 py-3" @click.stop>
+                    <input type="checkbox"
+                           x-ref="sentCheckbox"
+                           :value="'{{ pp.id }}'"
+                           x-model="selectedPosts"
+                           class="w-4 h-4 rounded border-stone-300 cursor-pointer"
+                           style="accent-color: var(--primary);">
+                </td>
                 <td class="px-4 py-3">
                     {% with first_att=pp.post.media_attachments.all.0 %}
                     {% if first_att %}
@@ -83,6 +132,50 @@ Shows all published/partially_published platform posts. Loaded via HTMX into #ta
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- Hidden bulk form (HTMX POST to calendar bulk action endpoint) -->
+    <form x-ref="sentBulkForm"
+          hx-post="{% url 'calendar:publish_bulk_action' workspace_id=workspace.id %}"
+          hx-trigger="none"
+          hx-target="#tab-content"
+          hx-select="#tab-content"
+          hx-swap="outerHTML"
+          hx-on::after-request="selectedPosts = []; if(document.querySelector('[x-ref=sentBulkSelect]')) document.querySelector('[x-ref=sentBulkSelect]').selectedIndex = 0;"
+          class="hidden"></form>
+
+    <!-- Bulk delete modal -->
+    <dialog x-ref="sentDeleteModal" class="rounded-xl shadow-xl p-0 max-w-lg w-full backdrop:bg-black/30 border-0">
+        <form method="dialog" class="p-6">
+            <h3 class="text-lg font-bold text-stone-900 mb-2">Delete Selected Posts</h3>
+            <p class="text-sm text-stone-600 mb-4">
+                You are about to delete <strong x-text="selectedPosts.length"></strong> platform post(s).
+                This action is irreversible. Proceed?
+            </p>
+            <div class="flex justify-end gap-2">
+                <button type="button" @click="$refs.sentDeleteModal.close()"
+                        class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-full transition-colors">Cancel</button>
+                <button type="submit"
+                        class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
+                        @click="
+                            const form = $refs.sentBulkForm;
+                            form.innerHTML = '';
+                            selectedPosts.forEach(id => {
+                                const inp = document.createElement('input');
+                                inp.type = 'hidden'; inp.name = 'platform_post_ids'; inp.value = id;
+                                form.appendChild(inp);
+                            });
+                            const aInp = document.createElement('input');
+                            aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = 'delete';
+                            form.appendChild(aInp);
+                            htmx.trigger(form, 'submit');
+                            $refs.sentDeleteModal.close();
+                        ">
+                    Delete <span x-text="selectedPosts.length"></span> Post(s)
+                </button>
+            </div>
+        </form>
+    </dialog>
+
     {% else %}
     {% if not has_connected_accounts %}
     {% include "calendar/partials/_no_channels_empty_state.html" %}

@@ -27,6 +27,7 @@ urlpatterns = [
     path("publish/drafts/", views.publish_tab_drafts, name="publish_tab_drafts"),
     path("publish/approvals/", views.publish_tab_approvals, name="publish_tab_approvals"),
     path("publish/sent/", views.publish_tab_sent, name="publish_tab_sent"),
+    path("publish/bulk-action/", views.publish_bulk_action, name="publish_bulk_action"),
     # Custom Calendar Events
     path("events/create/", views.event_create, name="event_create"),
     path("events/<uuid:event_id>/edit/", views.event_edit, name="event_edit"),

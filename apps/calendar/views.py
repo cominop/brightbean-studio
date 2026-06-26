@@ -1189,4 +1189,51 @@ def event_delete(request, workspace_id, event_id):
 
     if request.htmx:
         return HttpResponse(status=204, headers={"HX-Trigger": "calendarRefresh"})
+    return redirect("calendar:calendar", workspace_id=workspace.id)
+
+
+@login_required
+@require_POST
+def publish_bulk_action(request, workspace_id):
+    """Handle bulk actions on platform posts from publish tabs."""
+    workspace = _get_workspace(request, workspace_id)
+    pp_ids = request.POST.getlist("platform_post_ids")
+    post_ids = request.POST.getlist("post_ids")
+    action = request.POST.get("action", "")
+    comment = request.POST.get("comment", "")
+
+    if (not pp_ids and not post_ids) or not action:
+        return HttpResponse(status=400)
+
+    from apps.composer.models import PlatformPost, Post
+
+    if pp_ids:
+        pps = PlatformPost.objects.filter(id__in=pp_ids, post__workspace=workspace)
+    else:
+        pps = PlatformPost.objects.filter(post_id__in=post_ids, post__workspace=workspace)
+
+    match action:
+        case "delete":
+            for pp in pps:
+                post = pp.post
+                pp.delete()
+                if not post.platform_posts.exists():
+                    post.delete()
+        case "send_to_queue":
+            pps.filter(status="draft").update(status="pending_review")
+        case "approve":
+            pps.filter(status__in=["pending_review", "pending_client"]).update(status="approved")
+        case "reject":
+            pps.filter(status__in=["pending_review", "pending_client"]).update(
+                status="rejected", publish_error=comment[:255]
+            )
+        case "publish":
+            pps.filter(status__in=["approved", "scheduled"]).update(status="publishing")
+        case _:
+            return HttpResponse(status=400)
+
+    return HttpResponse(
+        status=204,
+        headers={"HX-Trigger": "bulkActionComplete"},
+    )
     return JsonResponse({"deleted": True})
