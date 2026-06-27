@@ -60,21 +60,24 @@ All members can view; action buttons shown conditionally based on can_approve pe
             <option value="publish">Publish</option>
         </select>
         <button @click="
-                const action = $refs.approvalBulkSelect.value;
-                if (!action || selectedPosts.length === 0) return;
-                if (action === 'delete') {
+                var act = $refs.approvalBulkSelect.value;
+                if (!act || selectedPosts.length === 0) return;
+                if (act === 'delete') {
                     $refs.approvalDeleteModal.showModal();
-                } else if (action === 'reject') {
+                } else if (act === 'reject') {
                     $refs.approvalRejectModal.showModal();
                 } else {
-                    htmx.ajax('POST', '{% url 'approvals:bulk_action' workspace_id=workspace.id %}', {
-                        target: '#tab-content',
-                        swap: 'innerHTML',
-                        values: {
-                            post_ids: selectedPosts.join(','),
-                            action: action
-                        }
+                    var form = $refs.approvalBulkForm;
+                    form.innerHTML = '';
+                    selectedPosts.forEach(function(id) {
+                        var inp = document.createElement('input');
+                        inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
+                        form.appendChild(inp);
                     });
+                    var aInp = document.createElement('input');
+                    aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = act;
+                    form.appendChild(aInp);
+                    htmx.trigger(form, 'submit');
                     selectedPosts = [];
                 }
             "
@@ -110,17 +113,20 @@ All members can view; action buttons shown conditionally based on can_approve pe
             <div class="flex justify-end gap-2">
                 <button type="button" @click="$refs.approvalDeleteModal.close()"
                         class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-full transition-colors">Cancel</button>
-                <button type="submit"
+                <button type="button"
                         class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
                         @click="
-                            htmx.ajax('POST', '{% url 'approvals:bulk_action' workspace_id=workspace.id %}', {
-                                target: '#tab-content',
-                                swap: 'innerHTML',
-                                values: {
-                                    post_ids: selectedPosts.join(','),
-                                    action: 'delete'
-                                }
+                            var form = $refs.approvalBulkForm;
+                            form.innerHTML = '';
+                            selectedPosts.forEach(function(id) {
+                                var inp = document.createElement('input');
+                                inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
+                                form.appendChild(inp);
                             });
+                            var aInp = document.createElement('input');
+                            aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = 'delete';
+                            form.appendChild(aInp);
+                            htmx.trigger(form, 'submit');
                             $refs.approvalDeleteModal.close();
                         ">
                     Delete <span x-text="selectedPosts.length"></span> Post(s)
@@ -140,18 +146,23 @@ All members can view; action buttons shown conditionally based on can_approve pe
             <div class="flex justify-end gap-2 mt-4">
                 <button type="button" @click="$refs.approvalRejectModal.close()"
                         class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-full transition-colors">Cancel</button>
-                <button type="submit"
+                <button type="button"
                         class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
                         @click="
-                            htmx.ajax('POST', '{% url 'approvals:bulk_action' workspace_id=workspace.id %}', {
-                                target: '#tab-content',
-                                swap: 'innerHTML',
-                                values: {
-                                    post_ids: selectedPosts.join(','),
-                                    action: 'reject',
-                                    comment: $refs.approvalRejectComment.value
-                                }
+                            var form = $refs.approvalBulkForm;
+                            form.innerHTML = '';
+                            selectedPosts.forEach(function(id) {
+                                var inp = document.createElement('input');
+                                inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
+                                form.appendChild(inp);
                             });
+                            var aInp = document.createElement('input');
+                            aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = 'reject';
+                            form.appendChild(aInp);
+                            var cInp = document.createElement('input');
+                            cInp.type = 'hidden'; cInp.name = 'comment'; cInp.value = $refs.approvalRejectComment.value;
+                            form.appendChild(cInp);
+                            htmx.trigger(form, 'submit');
                             $refs.approvalRejectModal.close();
                         ">
                     Reject

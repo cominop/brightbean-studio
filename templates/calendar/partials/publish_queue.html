@@ -200,15 +200,26 @@ Shows all scheduled platform posts grouped by date. Loaded via HTMX into #tab-co
                         class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
                         @click="
                             $refs.queueBulkDeleteModal.close();
-                            htmx.ajax('POST', '{% url 'calendar:publish_bulk_action' workspace_id=workspace.id %}', {
-                                target: '#tab-content',
-                                swap: 'innerHTML',
-                                values: {
-                                    platform_post_ids: selectedPosts.join(','),
-                                    action: 'delete',
-                                    current_tab: 'queue'
-                                }
+                            const form = $refs.queueBulkForm;
+                            form.innerHTML = '';
+                            selectedPosts.forEach(function(id) {
+                                const inp = document.createElement('input');
+                                inp.type = 'hidden';
+                                inp.name = 'platform_post_ids';
+                                inp.value = id;
+                                form.appendChild(inp);
                             });
+                            const actionInp = document.createElement('input');
+                            actionInp.type = 'hidden';
+                            actionInp.name = 'action';
+                            actionInp.value = 'delete';
+                            form.appendChild(actionInp);
+                            const tabInp = document.createElement('input');
+                            tabInp.type = 'hidden';
+                            tabInp.name = 'current_tab';
+                            tabInp.value = 'queue';
+                            form.appendChild(tabInp);
+                            htmx.trigger(form, 'submit');
                             selectedPosts = [];
                         ">
                     Delete <span x-text="selectedPosts.length"></span> Post(s)

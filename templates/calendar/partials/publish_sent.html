@@ -142,18 +142,24 @@ Shows all published/partially_published platform posts. Loaded via HTMX into #ta
             <div class="flex justify-end gap-2">
                 <button type="button" @click="$refs.sentDeleteModal.close()"
                         class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-full transition-colors">Cancel</button>
-                <button type="submit"
+                <button type="button"
                         class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
                         @click="
-                            htmx.ajax('POST', '{% url 'calendar:publish_bulk_action' workspace_id=workspace.id %}', {
-                                target: '#tab-content',
-                                swap: 'innerHTML',
-                                values: {
-                                    platform_post_ids: selectedPosts.join(','),
-                                    action: 'delete',
-                                    current_tab: 'sent'
-                                }
+                            $refs.sentBulkForm.innerHTML = '';
+                            selectedPosts.forEach(function(id) {
+                                const inp = document.createElement('input');
+                                inp.type = 'hidden';
+                                inp.name = 'platform_post_ids';
+                                inp.value = id;
+                                $refs.sentBulkForm.appendChild(inp);
                             });
+                            const a = document.createElement('input');
+                            a.type = 'hidden'; a.name = 'action'; a.value = 'delete';
+                            $refs.sentBulkForm.appendChild(a);
+                            const t = document.createElement('input');
+                            t.type = 'hidden'; t.name = 'current_tab'; t.value = 'sent';
+                            $refs.sentBulkForm.appendChild(t);
+                            htmx.trigger($refs.sentBulkForm, 'submit');
                             $refs.sentDeleteModal.close();
                         ">
                     Delete <span x-text="selectedPosts.length"></span> Post(s)

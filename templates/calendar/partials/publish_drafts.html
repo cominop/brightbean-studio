@@ -16,15 +16,19 @@ Shows all draft platform posts in a table. Loaded via HTMX into #tab-content.
             if (!val || selectedPosts.length === 0) return;
             if (val === 'delete') $refs.deleteConfirmModal.showModal();
             else if (val === 'send_to_queue') {
-                htmx.ajax('POST', '{% url 'calendar:publish_bulk_action' workspace_id=workspace.id %}', {
-                    target: '#tab-content',
-                    swap: 'innerHTML',
-                    values: {
-                        platform_post_ids: selectedPosts.join(','),
-                        action: 'send_to_queue',
-                        current_tab: 'drafts'
-                    }
+                $refs.bulkForm.innerHTML = '';
+                selectedPosts.forEach(function(id) {
+                    var inp = document.createElement('input');
+                    inp.type = 'hidden'; inp.name = 'platform_post_ids'; inp.value = id;
+                    $refs.bulkForm.appendChild(inp);
                 });
+                var act = document.createElement('input');
+                act.type = 'hidden'; act.name = 'action'; act.value = 'send_to_queue';
+                $refs.bulkForm.appendChild(act);
+                var tab = document.createElement('input');
+                tab.type = 'hidden'; tab.name = 'current_tab'; tab.value = 'drafts';
+                $refs.bulkForm.appendChild(tab);
+                htmx.trigger($refs.bulkForm, 'submit');
                 selectedPosts = [];
             }
         " class="px-3 py-1.5 text-[0.8125rem] font-medium rounded-full transition-colors"
@@ -135,7 +139,7 @@ Shows all draft platform posts in a table. Loaded via HTMX into #tab-content.
     {% endif %}
 
     <!-- Hidden HTMX Bulk Form -->
-    <form x-ref="bulkForm" class="hidden"></form>
+    <form x-ref="bulkForm" hx-post="{% url 'calendar:publish_bulk_action' workspace_id=workspace.id %}" hx-trigger="submit" hx-target="#tab-content" hx-swap="innerHTML" hx-on::after-request="selectedPosts = []; $refs.bulkSelect.selectedIndex = 0;" class="hidden"></form>
 
     <!-- Delete Confirmation Modal -->
     <dialog x-ref="deleteConfirmModal" class="rounded-2xl border border-stone-200 shadow-xl p-0 max-w-md backdrop:bg-black/40">
@@ -146,15 +150,25 @@ Shows all draft platform posts in a table. Loaded via HTMX into #tab-content.
                 <button @click="$refs.deleteConfirmModal.close()" class="px-4 py-2 text-sm font-medium text-stone-600 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors">Cancel</button>
                 <button @click="
                     $refs.deleteConfirmModal.close();
-                    htmx.ajax('POST', '{% url 'calendar:publish_bulk_action' workspace_id=workspace.id %}', {
-                        target: '#tab-content',
-                        swap: 'innerHTML',
-                        values: {
-                            platform_post_ids: selectedPosts.join(','),
-                            action: 'delete',
-                            current_tab: 'drafts'
-                        }
+                    $refs.bulkForm.innerHTML = '';
+                    selectedPosts.forEach(function(id) {
+                        var inp = document.createElement('input');
+                        inp.type = 'hidden';
+                        inp.name = 'platform_post_ids';
+                        inp.value = id;
+                        $refs.bulkForm.appendChild(inp);
                     });
+                    var act = document.createElement('input');
+                    act.type = 'hidden';
+                    act.name = 'action';
+                    act.value = 'delete';
+                    $refs.bulkForm.appendChild(act);
+                    var tab = document.createElement('input');
+                    tab.type = 'hidden';
+                    tab.name = 'current_tab';
+                    tab.value = 'drafts';
+                    $refs.bulkForm.appendChild(tab);
+                    htmx.trigger($refs.bulkForm, 'submit');
                     selectedPosts = [];
                 " class="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-full hover:bg-red-600 transition-colors">Delete</button>
             </div>
@@ -171,16 +185,30 @@ Shows all draft platform posts in a table. Loaded via HTMX into #tab-content.
                 <button @click="$refs.rejectCommentModal.close()" class="px-4 py-2 text-sm font-medium text-stone-600 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors">Cancel</button>
                 <button @click="
                     $refs.rejectCommentModal.close();
-                    htmx.ajax('POST', '{% url 'calendar:publish_bulk_action' workspace_id=workspace.id %}', {
-                        target: '#tab-content',
-                        swap: 'innerHTML',
-                        values: {
-                            platform_post_ids: selectedPosts.join(','),
-                            action: 'reject',
-                            comment: rejectReason,
-                            current_tab: 'drafts'
-                        }
+                    $refs.bulkForm.innerHTML = '';
+                    selectedPosts.forEach(function(id) {
+                        var inp = document.createElement('input');
+                        inp.type = 'hidden';
+                        inp.name = 'platform_post_ids';
+                        inp.value = id;
+                        $refs.bulkForm.appendChild(inp);
                     });
+                    var act = document.createElement('input');
+                    act.type = 'hidden';
+                    act.name = 'action';
+                    act.value = 'reject';
+                    $refs.bulkForm.appendChild(act);
+                    var tab = document.createElement('input');
+                    tab.type = 'hidden';
+                    tab.name = 'current_tab';
+                    tab.value = 'drafts';
+                    $refs.bulkForm.appendChild(tab);
+                    var cmt = document.createElement('input');
+                    cmt.type = 'hidden';
+                    cmt.name = 'comment';
+                    cmt.value = rejectReason;
+                    $refs.bulkForm.appendChild(cmt);
+                    htmx.trigger($refs.bulkForm, 'submit');
                     selectedPosts = [];
                     rejectReason = '';
                 " class="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-full hover:bg-orange-600 transition-colors">Reject</button>
