@@ -1234,4 +1234,6 @@ def publish_bulk_action(request, workspace_id):
 
     # Re-render the current tab so the UI updates
     current_tab = request.POST.get("current_tab", "drafts")
-    return _render_tab(request, workspace, current_tab)
+    response = _render_tab(request, workspace, current_tab)
+    response["HX-Refresh"] = "true"
+    return response
