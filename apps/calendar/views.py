@@ -10,6 +10,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import QuerySet
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from apps.common.validators import is_valid_hex_color
@@ -1234,6 +1235,9 @@ def publish_bulk_action(request, workspace_id):
 
     # Re-render the current tab so the UI updates
     current_tab = request.POST.get("current_tab", "drafts")
-    response = _render_tab(request, workspace, current_tab)
-    response["HX-Refresh"] = "true"
+    redirect_url = reverse("calendar:calendar", kwargs={"workspace_id": workspace_id})
+    response = HttpResponse(
+        status=200,
+        headers={"HX-Redirect": f"{redirect_url}?mode=list&tab={current_tab}"},
+    )
     return response
