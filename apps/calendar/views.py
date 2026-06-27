@@ -1232,8 +1232,6 @@ def publish_bulk_action(request, workspace_id):
         case _:
             return HttpResponse(status=400)
 
-    return HttpResponse(
-        status=204,
-        headers={"HX-Trigger": "bulkActionComplete"},
-    )
-    return JsonResponse({"deleted": True})
+    # Re-render the current tab so the UI updates
+    current_tab = request.POST.get("current_tab", "drafts")
+    return _render_tab(request, workspace, current_tab)

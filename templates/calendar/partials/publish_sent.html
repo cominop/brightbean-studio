@@ -126,7 +126,10 @@ Shows all published/partially_published platform posts. Loaded via HTMX into #ta
           hx-select="#tab-content"
           hx-swap="outerHTML"
           hx-on::after-request="selectedPosts = []; if(document.querySelector('[x-ref=sentBulkSelect]')) document.querySelector('[x-ref=sentBulkSelect]').selectedIndex = 0;"
-          class="hidden"></form>
+          class="hidden">
+        {% csrf_token %}
+        <input type="hidden" name="current_tab" value="sent">
+    </form>
 
     <!-- Bulk delete modal -->
     <dialog x-ref="sentDeleteModal" class="rounded-xl shadow-xl p-0 max-w-lg w-full backdrop:bg-black/30 border-0">

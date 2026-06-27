@@ -140,7 +140,10 @@ Shows all draft platform posts in a table. Loaded via HTMX into #tab-content.
     {% endif %}
 
     <!-- Hidden HTMX Bulk Form -->
-    <form x-ref="bulkForm" hx-post="{% url 'calendar:publish_bulk_action' workspace_id=workspace.id %}" hx-trigger="none" hx-target="#tab-content" hx-swap="innerHTML" hx-on::after-request="selectedPosts = []; $refs.bulkSelect.selectedIndex = 0;" class="hidden"></form>
+    <form x-ref="bulkForm" hx-post="{% url 'calendar:publish_bulk_action' workspace_id=workspace.id %}" hx-trigger="none" hx-target="#tab-content" hx-swap="innerHTML" hx-on::after-request="selectedPosts = []; $refs.bulkSelect.selectedIndex = 0;" class="hidden">
+        {% csrf_token %}
+        <input type="hidden" name="current_tab" value="drafts">
+    </form>
 
     <!-- Delete Confirmation Modal -->
     <dialog x-ref="deleteConfirmModal" class="rounded-2xl border border-stone-200 shadow-xl p-0 max-w-md backdrop:bg-black/40">
