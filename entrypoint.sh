@@ -5,6 +5,12 @@ python manage.py migrate --noinput
 echo "Syncing media to volume..."
 mkdir -p /data/media
 cp -rn /app/media/* /data/media/ || true
+echo "Volume contents at /data:"
+ls -la /data/ 2>&1 || true
+echo "Volume contents at /data/media:"
+ls -la /data/media/ 2>&1 || true
+echo "Volume contents at /data/media/workspaces:"
+ls -la /data/media/workspaces/ 2>&1 || true
 echo "Setting up superuser..."
 set +e
 python manage.py shell -c "
