@@ -66,6 +66,10 @@ All members can view; action buttons shown conditionally based on can_approve pe
                         if (act === 'reject') { $refs.approvalRejectModal.showModal(); return; }
                         var form = $refs.approvalBulkForm;
                         form.innerHTML = '';
+                        form.insertAdjacentHTML('beforeend', '{% csrf_token %}');
+                        var tabInp = document.createElement('input');
+                        tabInp.type = 'hidden'; tabInp.name = 'current_tab'; tabInp.value = 'approvals';
+                        form.appendChild(tabInp);
                         selectedPosts.forEach(function(id) {
                             var inp = document.createElement('input');
                             inp.type = 'hidden';
@@ -118,6 +122,10 @@ All members can view; action buttons shown conditionally based on can_approve pe
                         @click="
                             var form = $refs.approvalBulkForm;
                             form.innerHTML = '';
+                            form.insertAdjacentHTML('beforeend', '{% csrf_token %}');
+                            var tabInp = document.createElement('input');
+                            tabInp.type = 'hidden'; tabInp.name = 'current_tab'; tabInp.value = 'approvals';
+                            form.appendChild(tabInp);
                             selectedPosts.forEach(function(id) {
                                 var inp = document.createElement('input');
                                 inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
@@ -151,6 +159,10 @@ All members can view; action buttons shown conditionally based on can_approve pe
                         @click="
                             var form = $refs.approvalBulkForm;
                             form.innerHTML = '';
+                            form.insertAdjacentHTML('beforeend', '{% csrf_token %}');
+                            var tabInp = document.createElement('input');
+                            tabInp.type = 'hidden'; tabInp.name = 'current_tab'; tabInp.value = 'approvals';
+                            form.appendChild(tabInp);
                             selectedPosts.forEach(function(id) {
                                 var inp = document.createElement('input');
                                 inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
