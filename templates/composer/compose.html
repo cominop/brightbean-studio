@@ -2553,8 +2553,8 @@ function composerApp() {
             if (event.detail.successful) {
                 const action = document.getElementById('publish-action-btn')?.value;
                 if (action === 'schedule' || action === 'publish_now' || action === 'add_to_queue' || action === 'add_to_queue_priority') {
-                    // Redirect to calendar after scheduling/publishing/queuing
-                    window.location.href = '{% url "calendar:calendar" workspace_id=workspace.id %}';
+                    // Redirect to publish list so the user can see the scheduled/queued post
+                    window.location.href = '{% url "calendar:calendar" workspace_id=workspace.id %}?view=list';
                     return;
                 }
                 this.showSaveToast = true;
