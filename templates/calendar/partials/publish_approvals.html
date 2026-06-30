@@ -4,7 +4,29 @@ Shows pending approval platform posts with filter sub-tabs. Loaded via HTMX into
 All members can view; action buttons shown conditionally based on can_approve permission.
 {% endcomment %}
 
-<div x-data="{ selectedPosts: [] }"
+<div x-data="{ selectedPosts: [], applyApprovalBulkAction() {
+    var act = this.$refs.approvalBulkSelect.value;
+    if (!act || this.selectedPosts.length === 0) return;
+    if (act === 'delete') { this.$refs.approvalDeleteModal.showModal(); return; }
+    if (act === 'reject') { this.$refs.approvalRejectModal.showModal(); return; }
+    var form = this.$refs.approvalBulkForm;
+    var csrfEl = form.querySelector('input[name=csrfmiddlewaretoken]');
+    form.innerHTML = '';
+    if (csrfEl) form.appendChild(csrfEl.cloneNode(true));
+    var tabInp = document.createElement('input');
+    tabInp.type = 'hidden'; tabInp.name = 'current_tab'; tabInp.value = 'approvals';
+    form.appendChild(tabInp);
+    this.selectedPosts.forEach(function(id) {
+        var inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
+        form.appendChild(inp);
+    });
+    var aInp = document.createElement('input');
+    aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = act;
+    form.appendChild(aInp);
+    htmx.trigger(form, 'submit');
+    this.selectedPosts = [];
+} }"
      {% if is_htmx %}class="tab-slide-in"{% endif %}>
 
     <!-- Filter sub-tabs -->
@@ -59,33 +81,7 @@ All members can view; action buttons shown conditionally based on can_approve pe
             <option value="reject">Reject</option>
             <option value="publish">Publish</option>
         </select>
-        <button @click="
-                        var act = $refs.approvalBulkSelect.value;
-                        if (!act || selectedPosts.length === 0) return;
-                        if (act === 'delete') { $refs.approvalDeleteModal.showModal(); return; }
-                        if (act === 'reject') { $refs.approvalRejectModal.showModal(); return; }
-                        var form = $refs.approvalBulkForm;
-                        var csrfEl = form.querySelector('input[name=csrfmiddlewaretoken]');
-                        form.innerHTML = '';
-                        if (csrfEl) form.appendChild(csrfEl.cloneNode(true));
-                        var tabInp = document.createElement('input');
-                        tabInp.type = 'hidden'; tabInp.name = 'current_tab'; tabInp.value = 'approvals';
-                        form.appendChild(tabInp);
-                        selectedPosts.forEach(function(id) {
-                            var inp = document.createElement('input');
-                            inp.type = 'hidden';
-                            inp.name = 'post_ids';
-                            inp.value = id;
-                            form.appendChild(inp);
-                        });
-                        var aInp = document.createElement('input');
-                        aInp.type = 'hidden';
-                        aInp.name = 'action';
-                        aInp.value = act;
-                        form.appendChild(aInp);
-                        htmx.trigger(form, 'submit');
-                        selectedPosts = [];
-                    "
+        <button @click="applyApprovalBulkAction"
                 class="px-3 py-1.5 text-[0.8125rem] font-medium rounded-full transition-colors"
                 :class="selectedPosts.length > 0 ? 'bg-stone-900 text-white hover:bg-stone-800 cursor-pointer' : 'bg-stone-100 text-stone-400 cursor-not-allowed'"
                 :disabled="selectedPosts.length === 0">
