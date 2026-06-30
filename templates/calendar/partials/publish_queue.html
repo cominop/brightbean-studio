@@ -4,18 +4,35 @@ Shows all scheduled platform posts grouped by date. Loaded via HTMX into #tab-co
 {% endcomment %}
 {% load tz %}
 
-<div x-data="{ selectedPosts: [] }"{% if is_htmx %} class="tab-slide-in"{% endif %}>
+<div x-data="{ selectedPosts: [], applyBulkAction() {
+    const val = this.$refs.queueBulkSelect.value;
+    if (!val || this.selectedPosts.length === 0) return;
+    if (val === 'delete') this.$refs.queueBulkDeleteModal.showModal();
+}, confirmDelete() {
+    const form = this.$refs.queueBulkForm;
+    form.innerHTML = '';
+    this.selectedPosts.forEach(function(id) {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'platform_post_ids'; inp.value = id;
+        form.appendChild(inp);
+    });
+    const ai = document.createElement('input');
+    ai.type = 'hidden'; ai.name = 'action'; ai.value = 'delete';
+    form.appendChild(ai);
+    const ti = document.createElement('input');
+    ti.type = 'hidden'; ti.name = 'current_tab'; ti.value = 'queue';
+    form.appendChild(ti);
+    htmx.trigger(form, 'submit');
+    this.$refs.queueBulkDeleteModal.close();
+    this.selectedPosts = [];
+} }"{% if is_htmx %} class="tab-slide-in"{% endif %}>
     <!-- Bulk Actions Header -->
     <div class="flex items-center gap-3 mb-3">
         <select x-ref="queueBulkSelect" class="text-[0.8125rem] px-3 py-1.5 rounded-lg border border-stone-200 bg-white text-stone-700 focus:outline-none" :disabled="selectedPosts.length === 0">
             <option value="">Bulk Actions</option>
             <option value="delete">Delete</option>
         </select>
-        <button @click="
-            const val = $refs.queueBulkSelect.value;
-            if (!val || selectedPosts.length === 0) return;
-            if (val === 'delete') $refs.queueBulkDeleteModal.showModal();
-        " class="px-3 py-1.5 text-[0.8125rem] font-medium rounded-full transition-colors"
+        <button @click="applyBulkAction" class="px-3 py-1.5 text-[0.8125rem] font-medium rounded-full transition-colors"
            :class="selectedPosts.length === 0 ? 'bg-stone-100 text-stone-400 cursor-not-allowed' : 'bg-stone-900 text-white hover:bg-stone-800 cursor-pointer'"
         >Apply</button>
         <span x-show="selectedPosts.length > 0" x-cloak class="text-sm text-stone-500" x-text="selectedPosts.length + ' selected'"></span>
@@ -204,30 +221,7 @@ Shows all scheduled platform posts grouped by date. Loaded via HTMX into #tab-co
                         class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-full transition-colors">Cancel</button>
                 <button type="submit"
                         class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
-                        @click="
-                            $refs.queueBulkDeleteModal.close();
-                            const form = $refs.queueBulkForm;
-                            form.innerHTML = '';
-                            selectedPosts.forEach(function(id) {
-                                const inp = document.createElement('input');
-                                inp.type = 'hidden';
-                                inp.name = 'platform_post_ids';
-                                inp.value = id;
-                                form.appendChild(inp);
-                            });
-                            const actionInp = document.createElement('input');
-                            actionInp.type = 'hidden';
-                            actionInp.name = 'action';
-                            actionInp.value = 'delete';
-                            form.appendChild(actionInp);
-                            const tabInp = document.createElement('input');
-                            tabInp.type = 'hidden';
-                            tabInp.name = 'current_tab';
-                            tabInp.value = 'queue';
-                            form.appendChild(tabInp);
-                            htmx.trigger(form, 'submit');
-                            selectedPosts = [];
-                        ">
+                        @click="confirmDelete">
                     Delete <span x-text="selectedPosts.length"></span> Post(s)
                 </button>
             </div>

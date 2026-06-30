@@ -9,6 +9,14 @@ All members can view; action buttons shown conditionally based on can_approve pe
     if (!act || this.selectedPosts.length === 0) return;
     if (act === 'delete') { this.$refs.approvalDeleteModal.showModal(); return; }
     if (act === 'reject') { this.$refs.approvalRejectModal.showModal(); return; }
+    this._submitBulkForm(act);
+}, confirmApprovalDelete() {
+    this._submitBulkForm('delete');
+    this.$refs.approvalDeleteModal.close();
+}, confirmApprovalReject() {
+    this._submitBulkForm('reject', this.$refs.approvalRejectComment.value);
+    this.$refs.approvalRejectModal.close();
+}, _submitBulkForm(act, comment) {
     var form = this.$refs.approvalBulkForm;
     var csrfEl = form.querySelector('input[name=csrfmiddlewaretoken]');
     form.innerHTML = '';
@@ -24,6 +32,11 @@ All members can view; action buttons shown conditionally based on can_approve pe
     var aInp = document.createElement('input');
     aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = act;
     form.appendChild(aInp);
+    if (comment !== undefined && comment !== null) {
+        var cInp = document.createElement('input');
+        cInp.type = 'hidden'; cInp.name = 'comment'; cInp.value = comment;
+        form.appendChild(cInp);
+    }
     htmx.trigger(form, 'submit');
     this.selectedPosts = [];
 } }"
@@ -116,25 +129,7 @@ All members can view; action buttons shown conditionally based on can_approve pe
                         class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-full transition-colors">Cancel</button>
                 <button type="button"
                         class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
-                        @click="
-                            var form = $refs.approvalBulkForm;
-                            var csrfEl = form.querySelector('input[name=csrfmiddlewaretoken]');
-                            form.innerHTML = '';
-                            if (csrfEl) form.appendChild(csrfEl.cloneNode(true));
-                            var tabInp = document.createElement('input');
-                            tabInp.type = 'hidden'; tabInp.name = 'current_tab'; tabInp.value = 'approvals';
-                            form.appendChild(tabInp);
-                            selectedPosts.forEach(function(id) {
-                                var inp = document.createElement('input');
-                                inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
-                                form.appendChild(inp);
-                            });
-                            var aInp = document.createElement('input');
-                            aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = 'delete';
-                            form.appendChild(aInp);
-                            htmx.trigger(form, 'submit');
-                            $refs.approvalDeleteModal.close();
-                        ">
+                        @click="confirmApprovalDelete">
                     Delete <span x-text="selectedPosts.length"></span> Post(s)
                 </button>
             </div>
@@ -154,28 +149,7 @@ All members can view; action buttons shown conditionally based on can_approve pe
                         class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-full transition-colors">Cancel</button>
                 <button type="button"
                         class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
-                        @click="
-                            var form = $refs.approvalBulkForm;
-                            var csrfEl = form.querySelector('input[name=csrfmiddlewaretoken]');
-                            form.innerHTML = '';
-                            if (csrfEl) form.appendChild(csrfEl.cloneNode(true));
-                            var tabInp = document.createElement('input');
-                            tabInp.type = 'hidden'; tabInp.name = 'current_tab'; tabInp.value = 'approvals';
-                            form.appendChild(tabInp);
-                            selectedPosts.forEach(function(id) {
-                                var inp = document.createElement('input');
-                                inp.type = 'hidden'; inp.name = 'post_ids'; inp.value = id;
-                                form.appendChild(inp);
-                            });
-                            var aInp = document.createElement('input');
-                            aInp.type = 'hidden'; aInp.name = 'action'; aInp.value = 'reject';
-                            form.appendChild(aInp);
-                            var cInp = document.createElement('input');
-                            cInp.type = 'hidden'; cInp.name = 'comment'; cInp.value = $refs.approvalRejectComment.value;
-                            form.appendChild(cInp);
-                            htmx.trigger(form, 'submit');
-                            $refs.approvalRejectModal.close();
-                        ">
+                        @click="confirmApprovalReject">
                     Reject
                 </button>
             </div>
