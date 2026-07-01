@@ -898,6 +898,17 @@
                 }
             }
         });
+        // Catch session expiry / server restart: if HTMX gets back a
+        // login redirect or login page HTML, force a full browser reload
+        // instead of injecting the login page into #tab-content.
+        document.body.addEventListener('htmx:beforeSwap', function(evt) {
+            var xhr = evt.detail.xhr;
+            if (!xhr) return;
+            if (xhr.status === 302 || (xhr.responseURL && xhr.responseURL.indexOf('/accounts/login/') !== -1 || (xhr.responseText && xhr.responseText.indexOf('login-form') !== -1))) {
+                evt.preventDefault();
+                window.location.href = '/accounts/login/';
+            }
+        });
     </script>
     <script src="{% static 'js/unsplash-modal.js' %}" defer></script>
     <script src="{% static 'js/alpine.min.js' %}" defer></script>
