@@ -28,6 +28,14 @@ Shows all scheduled platform posts grouped by date. Loaded via HTMX into #tab-co
 } }"{% if is_htmx %} class="tab-slide-in"{% endif %}>
     <!-- Bulk Actions Header -->
     <div class="flex items-center gap-3 mb-3">
+        <label class="flex items-center gap-1.5 text-xs text-stone-500 cursor-pointer select-none">
+            <input type="checkbox" @change="
+                const cbs = document.querySelectorAll('.post-checkbox');
+                cbs.forEach(cb => cb.checked = $el.checked);
+                selectedPosts = $el.checked ? Array.from(cbs).map(cb => cb.value) : [];
+            " class="w-4 h-4 rounded border-stone-300 cursor-pointer" style="accent-color: var(--primary);">
+            All
+        </label>
         <select x-ref="queueBulkSelect" class="text-[0.8125rem] px-3 py-1.5 rounded-lg border border-stone-200 bg-white text-stone-700 focus:outline-none" :disabled="selectedPosts.length === 0">
             <option value="">Bulk Actions</option>
             <option value="delete">Delete</option>

@@ -3,7 +3,28 @@ Sent tab partial for the Publish page.
 Shows all published/partially_published platform posts. Loaded via HTMX into #tab-content.
 {% endcomment %}
 
-<div x-data="{ selectedPosts: [] }"{% if is_htmx %} class="tab-slide-in"{% endif %}>
+<div x-data="{ selectedPosts: [], applyBulkAction() {
+    const action = this.$refs.sentBulkSelect.value;
+    if (!action || this.selectedPosts.length === 0) return;
+    if (action === 'delete') this.$refs.sentDeleteModal.showModal();
+}, confirmDelete() {
+    const form = this.$refs.sentBulkForm;
+    form.innerHTML = '';
+    this.selectedPosts.forEach(function(id) {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'platform_post_ids'; inp.value = id;
+        form.appendChild(inp);
+    });
+    const a = document.createElement('input');
+    a.type = 'hidden'; a.name = 'action'; a.value = 'delete';
+    form.appendChild(a);
+    const t = document.createElement('input');
+    t.type = 'hidden'; t.name = 'current_tab'; t.value = 'sent';
+    form.appendChild(t);
+    htmx.trigger(form, 'submit');
+    this.$refs.sentDeleteModal.close();
+    this.selectedPosts = [];
+} }"{% if is_htmx %} class="tab-slide-in"{% endif %}>
     {% if platform_posts %}
     <!-- Bulk actions header (WordPress-style) -->
     <div class="flex items-center gap-3 mb-3">
@@ -13,13 +34,7 @@ Shows all published/partially_published platform posts. Loaded via HTMX into #ta
             <option value="">Bulk Actions</option>
             <option value="delete">Delete</option>
         </select>
-        <button @click="
-                const action = $refs.sentBulkSelect.value;
-                if (!action || selectedPosts.length === 0) return;
-                if (action === 'delete') {
-                    $refs.sentDeleteModal.showModal();
-                }
-            "
+        <button @click="applyBulkAction"
                 class="px-3 py-1.5 text-[0.8125rem] font-medium rounded-full transition-colors"
                 :class="selectedPosts.length > 0 ? 'bg-stone-900 text-white hover:bg-stone-800 cursor-pointer' : 'bg-stone-100 text-stone-400 cursor-not-allowed'"
                 :disabled="selectedPosts.length === 0">
@@ -144,24 +159,7 @@ Shows all published/partially_published platform posts. Loaded via HTMX into #ta
                         class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-full transition-colors">Cancel</button>
                 <button type="button"
                         class="px-5 py-2 text-sm font-semibold text-white rounded-full bg-red-500 hover:bg-red-600 transition-colors"
-                        @click="
-                            $refs.sentBulkForm.innerHTML = '';
-                            selectedPosts.forEach(function(id) {
-                                const inp = document.createElement('input');
-                                inp.type = 'hidden';
-                                inp.name = 'platform_post_ids';
-                                inp.value = id;
-                                $refs.sentBulkForm.appendChild(inp);
-                            });
-                            const a = document.createElement('input');
-                            a.type = 'hidden'; a.name = 'action'; a.value = 'delete';
-                            $refs.sentBulkForm.appendChild(a);
-                            const t = document.createElement('input');
-                            t.type = 'hidden'; t.name = 'current_tab'; t.value = 'sent';
-                            $refs.sentBulkForm.appendChild(t);
-                            htmx.trigger($refs.sentBulkForm, 'submit');
-                            $refs.sentDeleteModal.close();
-                        ">
+                        @click="confirmDelete">
                     Delete <span x-text="selectedPosts.length"></span> Post(s)
                 </button>
             </div>
